@@ -1,0 +1,2 @@
+// Put files in static/projects/fruity-pigs/ and enter their /projects/... paths here.
+export const fruityMedia = { film:'/projects/fruity-pigs/launch-film.mp4', storyboard:'/projects/fruity-pigs/storyboard.png', illustrations:['/projects/fruity-pigs/edited-1-updated.png','/projects/fruity-pigs/extra-flavour.png','/projects/fruity-pigs/usp.png'], aiTest:'/projects/fruity-pigs/ai-generated-movement.mp4', composite:'/projects/fruity-pigs/final-composite-preview.mp4', sound:'/projects/fruity-pigs/sound-preview.mp3' };

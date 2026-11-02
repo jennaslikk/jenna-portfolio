@@ -1,0 +1,15 @@
+node_modules/
+.svelte-kit/
+.vercel/
+build/
+.DS_Store
+
+# My licensed fonts and my artwork – never upload
+static/fonts/
+static/images/
+static/projects/
+
+# Passwords and keys – never upload
+.env
+.env.*
+!.env.example

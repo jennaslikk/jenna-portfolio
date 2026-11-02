@@ -1,0 +1,1 @@
+<script>import {page} from "$app/stores";</script><main id="main" class="journal"><h1>{$page.status}</h1><p>{$page.error?.message}</p><a href="/">Return home</a></main>
