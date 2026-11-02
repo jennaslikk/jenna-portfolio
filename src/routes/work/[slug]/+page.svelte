@@ -115,6 +115,18 @@
 <aside class="project-sidebar"><div class="sticky-details"><div id="project-details-content" class:collapsed={!detailsOpen} aria-hidden={!detailsOpen} inert={!detailsOpen}><div class="project-details-inner"><section><h2 class="label">Client</h2><p>{data.project.client||'To be added'}</p></section>{#if data.project.slug==='fruity-pigs' || data.project.createdViaStudio}<section><h2 class="label">Context</h2><p>{data.project.context}</p></section><section><h2 class="label">My role</h2><p>{#each data.project.roles as role, i}{#if i > 0}<br/>{/if}{role}{/each}</p></section><section><h2 class="label">Tools</h2><p>{#each data.project.tools as tool, i}{#if i > 0}<br/>{/if}{tool}{/each}</p></section>{/if}<a class="button" href="/work">View all work</a></div></div></div></aside></div>
 
 <style>
+ /* Align the audio player's outer edges with the combined comparison previews. */
+ .audio-player {
+  width: min(836px, 78%);
+  margin-left: auto;
+  margin-right: auto;
+ }
+ @media (min-width: 1001px) {
+  .audio-player { width: 886rem; }
+ }
+ @media (max-width: 700px) {
+  .audio-player { width: 100%; }
+ }
  .project-body { white-space: pre-line; margin-top: 24px; }
  .hero-video.work-card-size { width: calc((85% - 162rem) * 872 / 1274 + 81rem); margin-inline: auto; }
  .hero-video.work-card-size.portrait-size { width: calc((85% - 162rem) * 402 / 1274); }

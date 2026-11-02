@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { normaliseHex, getPalette } from '#lib/server/color-api';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
 import { studioComments, saveComment, validateComment, deleteComment } from '#lib/server/comments';
 import { createProject } from '#lib/server/create-project';
@@ -29,6 +30,26 @@ export async function load({ locals, url, cookies }) {
 }
 
 export const actions = {
+ generatePalette: async ({ locals, request, fetch }) => {
+  // Check identity before parsing input or contacting the external service.
+  requireUser(locals);
+  if (Number(request.headers.get('content-length') || 0) > 1024) {
+   return fail(400, { paletteMessage: 'Please enter a HEX colour such as #DEC1DA.' });
+  }
+  let input;
+  try { input = await request.formData(); } catch {
+   return fail(400, { paletteMessage: 'Please use the colour palette form.' });
+  }
+  const raw = input.get('hex');
+  const hex = normaliseHex(raw);
+  const paletteHex = typeof raw === 'string' ? raw.slice(0, 16) : '';
+  if (!hex) return fail(400, { paletteHex, paletteMessage: 'Enter 3 or 6 hexadecimal digits, with or without #.' });
+  try {
+   return { paletteHex: `#${hex}`, palette: await getPalette(hex, fetch) };
+  } catch {
+   return fail(502, { paletteHex: `#${hex}`, paletteMessage: 'The colour service could not generate a palette. Please try again shortly.' });
+  }
+ },
  deleteComment: async ({ locals, request, cookies }) => {
   requireUser(locals);
   let input;

@@ -1,4 +1,5 @@
 <script>
+ import PaletteTool from '#lib/components/PaletteTool.svelte';
  import { projectCategories, projectTypes, projectFields } from '#lib/project-form';
  let { data, form } = $props();
 </script>
@@ -117,6 +118,7 @@
      </div>
     {/if}
    </section>
+   <PaletteTool result={form} />
   {:else}
    <form method="POST" action="?/login">
     <div class="field">

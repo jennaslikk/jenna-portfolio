@@ -340,3 +340,62 @@ both the comment id and project before deletion. Saving/deleting redirects back
 to the selected project. Public portfolio pages still have no comment controls.
 The comments verification script also tests deletion, rejected unauthorized and
 cross-origin deletes, and rejection of a mismatched project.
+
+
+## Stage 5 verification: existing category filters
+
+The Work page already implements category filtering from Neon category arrays,
+including projects with multiple categories, an All Projects option, empty-result
+text, selected-button state and a mobile filter toggle. Existing labels are
+preserved: Branding corresponds to the brief's Graphic Design wording, and
+Motion Graphics to Motion. No public layout or category labels were changed.
+A final manual check is to select each category at desktop and phone widths.
+
+## Stage 6: The Color API palette tool
+
+The private studio now has a Colour palette section after Comments. Enter a
+three- or six-digit HEX code, with or without `#`, and click Generate palette.
+The page shows the seed colour's API-supplied name and five analogous colours,
+each with a swatch, name, HEX value and Copy HEX button. Copy uses the browser
+clipboard on localhost/HTTPS; if permission is denied, select the displayed HEX
+and copy it manually. A status message reports success or failure.
+
+### How the request works
+
+1. The browser posts the HEX to the studio's `generatePalette` server action.
+2. The action checks the signed-in user and validates the HEX input.
+3. `src/lib/server/color-api.js` calls the fixed HTTPS `/id` endpoint for the
+   seed name and `/scheme` with `mode=analogic&count=5` for the palette.
+4. An eight-second timeout, HTTP checks and response validation prevent endless
+   waiting or unsafe values. Errors show a friendly retry message, not a fake
+   palette. Only validated HEX codes and names are returned to the page.
+5. `src/lib/components/PaletteTool.svelte` renders the swatches locally. API image
+   URLs are not used, and the browser never calls the external API itself.
+
+No API key, database migration or package installation is needed. No account
+information or database credentials are sent to The Color API—only the HEX code
+and palette options. Login, session and CSRF protection remain in place. Public
+portfolio pages are unchanged; no AI API has been implemented.
+
+Documentation checked: https://www.thecolorapi.com/docs (`/id` and `/scheme`).
+
+### Tests and browser checks
+
+- `node --test scripts/color-api.test.js` tests HEX shorthand/invalid input,
+  fixed endpoint construction, safe response parsing, HTTP/JSON errors and timeout.
+- For live verification, start `npm run preview -- --host 127.0.0.1 --port 4178`
+  and run `node scripts/test-palette.js`. It creates only a temporary session for
+  the existing administrator, checks denied access and invalid input, calls the
+  live API through the app and verifies all six swatches and copy controls. The
+  temporary session is removed and account/content records are not changed.
+- In your browser, sign in to `/studio`, scroll below Comments, enter `#DEC1DA`,
+  and generate a palette. Try `abc` as shorthand, then invalid text. Click Copy
+  HEX and paste into a spare text field to confirm the clipboard value. Check
+  loading feedback, keyboard focus and the layout on a phone-sized screen.
+- Sign out: the palette tool must disappear. No external request is made just
+  by visiting a public page or the logged-out studio.
+
+To remove the palette feature, remove its studio component/import and server
+`generatePalette` action, `src/lib/components/PaletteTool.svelte`,
+`src/lib/server/color-api.js`, `scripts/color-api.test.js` and
+`scripts/test-palette.js`. No public portfolio code depends on it.
