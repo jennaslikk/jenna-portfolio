@@ -4,12 +4,40 @@ node_modules/
 build/
 .DS_Store
 
-# My licensed fonts and my artwork – never upload
+# Portfolio exports in static/images/, static/videos/ and static/projects/ may be tracked.
+# Unreleased Berry Lovely assets – never upload until explicitly approved
+static/projects/usa-valentines/
+**/[bB]erry-[lL]ovely*
+**/[bB]erry_[lL]ovely*
+**/[bB]erry[lL]ovely*
+**/usa-valentines/
+**/usa-valentines.*
+
+# Licensed font files – never upload
 static/fonts/
-static/images/
-static/projects/
+*.[oO][tT][fF]
+*.[tT][tT][fF]
+*.[wW][oO][fF][fF]
+*.[wW][oO][fF][fF]2
+*.[eE][oO][tT]
+
+# Original editable design files – never upload
+*.[aA][iI]
+*.[pP][sS][dD]
+*.[pP][sS][bB]
+*.[aA][eE][pP]
+*.[aA][eE][pP][xX]
 
 # Passwords and keys – never upload
 .env
 .env.*
 !.env.example
+
+# Private keys and local credentials – never upload
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+.aws/
