@@ -5,7 +5,21 @@
  import { projectGrid } from '#lib/project-grid';
  const placements = $derived(projectGrid(projects));
  import { fade } from 'svelte/transition';
- import { onMount } from 'svelte';
+ import { onMount, getContext } from 'svelte';
+ const workHasMultipleRows = getContext('workHasMultipleRows');
+
+ function measureRows(node) {
+  // Measure the actual layout so filters and mobile wrapping are both respected.
+  const update = () => {
+   const cards = [...node.querySelectorAll('.project-card')];
+   const firstTop = cards[0]?.getBoundingClientRect().top;
+   workHasMultipleRows.set(cards.some(card => Math.abs(card.getBoundingClientRect().top - firstTop) > 2));
+  };
+  const observer = new ResizeObserver(update);
+  observer.observe(node);
+  const frame = requestAnimationFrame(update);
+  return { destroy() { cancelAnimationFrame(frame); observer.disconnect(); } };
+ }
 
  const categories = ['All Projects', 'AI Creative', 'Motion Graphics', 'Branding', 'Illustration'];
  // Database categories preserve the existing multi-category filters.
@@ -41,7 +55,7 @@
  <main id="main" class="work-main fade">
   <div class="grid-container">
    {#if visible}
-    <div class="project-grid" class:single-result={filteredProjects.length === 1} class:ai-creative-grid={displayedCategory === 'AI Creative' && filteredProjects.every(project => project.format === 'portrait')} class:motion-grid={displayedCategory === 'Motion Graphics'} in:fade={{ duration: reducedMotion ? 0 : 125 }} out:fade={{ duration: reducedMotion ? 0 : 125 }} onoutroend={finishFilter}>
+    <div class="project-grid" use:measureRows class:single-result={filteredProjects.length === 1} class:ai-creative-grid={displayedCategory === 'AI Creative' && filteredProjects.every(project => project.format === 'portrait')} class:motion-grid={displayedCategory === 'Motion Graphics'} in:fade={{ duration: reducedMotion ? 0 : 125 }} out:fade={{ duration: reducedMotion ? 0 : 125 }} onoutroend={finishFilter}>
      {#each filteredProjects as project (project.slug)}
       <article class={`project-card card-${projects.indexOf(project) + 1}`} class:portrait-card={project.format === 'portrait'} class:pattern-staggered={displayedCategory === 'All Projects' && placements[project.slug].staggered} style:grid-row-start={displayedCategory === 'All Projects' ? placements[project.slug].row : undefined} style:grid-column-start={displayedCategory === 'All Projects' ? placements[project.slug].column : undefined}>
        <a href={`/work/${project.slug}`}>

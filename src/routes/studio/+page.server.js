@@ -1,11 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
+import { studioComments, saveComment, validateComment, deleteComment } from '#lib/server/comments';
 import { createProject } from '#lib/server/create-project';
 import { validateProject } from '#lib/server/project-input';
 import { findProject } from '#lib/server/projects';
 import { normaliseUsername, validUsername, validPassword } from '#lib/server/passwords';
 
-export async function load({ locals, url }) {
+export async function load({ locals, url, cookies }) {
  // No project data or course tools are queried for logged-out visitors.
  if (!locals.user) return { user: null, createdProject: null };
  const user = requireUser(locals);
@@ -17,10 +18,55 @@ export async function load({ locals, url }) {
    if (project.createdViaStudio) createdProject = { slug: project.slug, title: project.title };
   } catch { /* A stale confirmation URL must not break the studio. */ }
  }
- return { user, createdProject };
+ let commentsData;
+ try { commentsData = await studioComments(locals, url.searchParams.get('project')); } catch {
+  commentsData = { commentProjects: [], selectedCommentProject: null, comments: [], commentLoadError: 'Comments are temporarily unavailable. Please try again shortly.' };
+ }
+ // Consume the deletion notice once instead of keeping it in the URL.
+ const commentDeleted = cookies.get('studio_comment_deleted') === url.searchParams.get('project');
+ if (cookies.get('studio_comment_deleted')) cookies.delete('studio_comment_deleted', { path: '/studio', secure: true });
+ return { user, createdProject, ...commentsData, commentSaved: url.searchParams.get('commentSaved') === '1', commentDeleted };
 }
 
 export const actions = {
+ deleteComment: async ({ locals, request, cookies }) => {
+  requireUser(locals);
+  let input;
+  try { input = await request.formData(); } catch {
+   return fail(400, { deleteMessage: 'Please use the Delete comment button.' });
+  }
+  const id = input.get('commentId');
+  const project = input.get('project');
+  if (typeof id !== 'string' || !/^[1-9][0-9]{0,17}$/.test(id) || typeof project !== 'string' || !/^[a-z0-9-]{1,100}$/.test(project)) {
+   return fail(400, { deleteMessage: 'Choose a valid comment and project.' });
+  }
+  try {
+   if (!await deleteComment(locals, id, project)) return fail(404, { deleteMessage: 'That comment is no longer available for this project.' });
+  } catch {
+   return fail(503, { deleteMessage: 'The comment could not be deleted. Please try again shortly.' });
+  }
+  cookies.set('studio_comment_deleted', project, { path: '/studio', httpOnly: true, secure: true, sameSite: 'lax', maxAge: 60 });
+  redirect(303, `/studio?project=${encodeURIComponent(project)}#comments`);
+ },
+ addComment: async ({ locals, request }) => {
+  requireUser(locals);
+  if (Number(request.headers.get('content-length') || 0) > 32768) {
+   return fail(413, { commentMessage: 'This submission is too large. Please shorten the comment.' });
+  }
+  let input;
+  try { input = await request.formData(); } catch {
+   return fail(400, { commentMessage: 'Please use the comment form.' });
+  }
+  const { values, errors } = validateComment(input);
+  if (Object.keys(errors).length) return fail(400, { commentValues: values, commentErrors: errors, commentMessage: 'Please check the comment fields.' });
+  try {
+   if (!await saveComment(locals, values)) return fail(400, { commentValues: values, commentErrors: { project: 'That project is no longer available.' }, commentMessage: 'Choose an existing project.' });
+  } catch {
+   return fail(503, { commentValues: values, commentMessage: 'The comment could not be saved. Please try again shortly.' });
+  }
+  // Refreshing the confirmation reloads stored comments without posting again.
+  redirect(303, `/studio?project=${encodeURIComponent(values.project)}&commentSaved=1#comments`);
+ },
  createProject: async ({ locals, request }) => {
   // Authorisation runs before reading the submitted content or writing anything.
   requireUser(locals);

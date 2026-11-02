@@ -285,3 +285,58 @@ studio form, `src/lib/server/create-project.js`, `src/lib/server/project-input.j
 `src/lib/project-form.js` and `scripts/test-add-project.js`. Keep public loaders
 and the `createdViaStudio` rendering branch if you want already-published projects
 to remain readable. Deleting the publishing form does not delete database content.
+
+
+## Stage 4: private project comments
+
+The Comments section is below Add a project on `/studio`. Select an existing
+project and click View comments. Enter a name (1–80 characters) and comment
+(1–2,000 characters), then Save comment. Names and messages are trimmed and
+validated on the server. Roles/accounts are unchanged: only signed-in studio
+users can read or submit comments. No public comments UI or API has been added.
+
+`src/lib/server/comments.js` checks the server identity and uses parameterised SQL
+for project-specific reads and inserts. The existing `comments` table and its
+project/date index are reused; no migration or new dependency is needed. Results
+are ordered by creation time descending, then id descending for ties. Times are
+shown in Stockholm time. Text is escaped by Svelte and line breaks are preserved;
+HTML is never executed. Missing or deleted projects are rejected. Login/session,
+Origin, no-store and CSRF protections remain in place.
+
+Saving redirects back to the selected project, so refreshing reads persisted
+comments rather than submitting another one. Choosing a different project uses a
+GET form and puts the project slug in the studio URL. Failed submissions keep the
+entered name/message and show friendly validation errors. Logged-out requests do
+not query or receive project/comment data. Comments stay entirely inside studio;
+the public portfolio loaders and templates were not changed in Stage 4.
+
+### Test in your browser
+
+1. Run `npm run dev`, open `/studio` and sign in.
+2. Scroll below Add a project to Comments, choose a project, and click View comments.
+3. Enter a name and comment and save. Add another: the newer one should be first.
+4. Refresh. Both should remain and no duplicate should appear.
+5. Select another project and click View comments: comments from the first must
+   not appear. Switch back to see them again.
+6. Check empty inputs, keyboard operation and the section on a narrow screen.
+7. Sign out or open a private browser window: Comments and project options should
+   be absent. Public Home, Work and project pages should have no comments section.
+
+Automated verification: start `npm run preview -- --host 127.0.0.1 --port 4177`,
+then run `node scripts/test-comments.js`. It creates a temporary session for the
+existing administrator without reading or changing their password, writes two
+uniquely marked test comments, verifies persistence, ordering, isolation, escaping,
+validation and denied access, and removes only its own comments and session.
+No additional account is created. Existing comments are compared and preserved.
+
+To remove course comments later, remove the Comments section, the `addComment`
+action, the comments portion of the studio loader, `src/lib/server/comments.js`
+and `scripts/test-comments.js`. Leave database records in place unless Jenna
+explicitly approves their removal. No public portfolio code depends on comments.
+
+Each saved studio comment now names its project and has a Delete comment button.
+The browser asks for confirmation; the server requires a valid session and checks
+both the comment id and project before deletion. Saving/deleting redirects back
+to the selected project. Public portfolio pages still have no comment controls.
+The comments verification script also tests deletion, rejected unauthorized and
+cross-origin deletes, and rejection of a mismatched project.
