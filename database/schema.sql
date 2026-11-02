@@ -1,3 +1,4 @@
+-- OBSOLETE DRAFT: use db/schema.sql and scripts/setup-database.js for Stage 1.
 -- Draft PostgreSQL content schema. Run only in your own development database.
 -- Authentication tables must be supplied by the chosen auth implementation.
 CREATE TABLE IF NOT EXISTS posts (

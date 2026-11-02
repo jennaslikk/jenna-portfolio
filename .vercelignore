@@ -1,0 +1,27 @@
+# Keep secrets, editable originals and unreleased assets out of deployments.
+.env
+.env.*
+!.env.example
+.agents/
+.git/
+node_modules/
+.svelte-kit/
+static/projects/usa-valentines/
+**/usa-valentines/
+**/usa-valentines.*
+**/[bB]erry-[lL]ovely*
+**/[bB]erry_[lL]ovely*
+**/[bB]erry[lL]ovely*
+*.[aA][iI]
+*.[pP][sS][dD]
+*.[pP][sS][bB]
+*.[aA][eE][pP]
+*.[aA][eE][pP][xX]
+*.pem
+*.key
+credentials.json
+.neon
+.aws/
+*.p12
+*.pfx
+service-account*.json

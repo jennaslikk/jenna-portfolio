@@ -1,7 +1,7 @@
 <script>
  import '../app.css';
  import { page } from '$app/stores';
- import { site } from '$lib/site';
+ import { site } from '#lib/site';
 </script>
 <a class="skip" href="#main">Skip to content</a>
 <header id="top"><a class="brand" href="/">Jenna Slikkerveer</a><nav aria-label="Main navigation"><a href="/work" aria-current={$page.url.pathname.startsWith('/work')?'page':undefined}>Work</a><a href={`mailto:${site.email}`}>Contact</a></nav></header>

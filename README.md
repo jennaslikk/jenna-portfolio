@@ -74,3 +74,58 @@ This project uses adapter-auto. After local checks pass, connect your repository
 - The source code in this repository is shared for course assessment (Programming & Methods, Berghs) and may be viewed for that purpose.
 - All images, design work and visual content shown on the website are © 2026 Jenna Slikkerveer, all rights reserved. They may not be copied, reused or distributed without written permission.
 - Image files (`static/images/`) and licensed fonts (`static/fonts/`, PP Editorial New) are intentionally not included in this repository. Running the project locally will show placeholder boxes and fallback fonts (Georgia and Jost) instead.
+
+
+## Stage 1: Neon database (current setup)
+
+The portfolio now reads project records from Neon PostgreSQL on the SvelteKit server.
+Home selections, gallery order, categories, project details and media paths are stored
+in `projects`. The actual media and fonts remain in their existing static folders.
+The empty gallery slot and homepage preview are intentionally preserved.
+
+- `neon.ts` declares the Neon configuration. PostgreSQL is the only service used;
+  authentication is disabled here because course sign-in is a later stage.
+- `.neon` is the ignored local link to the selected project and branch.
+- `neon deploy` applies Neon configuration and pulls variables into ignored
+  `.env.local` (or `.env` if it exists). It does not publish the portfolio to Vercel.
+- `src/lib/server/db.js` reads `DATABASE_URL` privately for page queries.
+- `src/lib/server/projects.js` uses parameterised queries to prevent SQL injection.
+- `+page.server.js` loaders on Home, Work and the project route supply the existing UI.
+- `src/lib/projects.js` and `src/lib/media.js` remain initial seed snapshots only.
+  Editing those snapshots no longer changes live project records.
+
+### Reproduce the database setup
+
+1. Sign in with `neon login`, link the intended project and branch, and pull env.
+2. Keep `DATABASE_URL` and `DATABASE_URL_UNPOOLED` only in your ignored env file.
+   The pooled URL serves pages; the direct URL runs schema setup.
+3. Inspect `db/schema.sql`, the current authoritative schema. The older
+   `database/schema.sql` is an obsolete draft and must not be used for Stage 1.
+4. Run `npm run db:setup` when env is in `.env.local`. If using `.env`, run
+   `node --env-file=.env scripts/setup-database.js` instead.
+5. The setup runs in a transaction and inserts the five original project records.
+   Repeating it leaves existing records untouched; it does not migrate changes to
+   existing table definitions.
+6. Run `npm run check`, `npm run build`, then `npm run preview`.
+
+Check Home, `/work`, all five linked project pages, the empty placeholder and a
+nonexistent project URL (404). Check mobile filters, project details and media
+playback in your browser. Database failures produce a friendly 503 response.
+
+Tables for `users`, `sessions` and `comments` are prepared but have no UI yet.
+There is no studio page, sign-in, comment form or AI summary generation in Stage 1.
+When removing future course features, retain database/project helpers unless you
+also replace the public loaders: the portfolio itself now depends on them.
+
+### Unreleased assets and deployment
+
+Berry Lovely remains excluded from GitHub and is not referenced or seeded.
+`.vercelignore` excludes `static/projects/usa-valentines/` and matching private
+asset names, alongside secrets and editable originals. Leave its local files in
+place. Before any public deployment, inspect the actual deployment contents;
+other upload tools may not respect `.vercelignore`. A local preview can still
+serve static files by direct URL. No public deployment has been performed.
+
+Licensed PP Editorial New fonts remain excluded from GitHub. Futura PT continues
+through Adobe Fonts. The local CLI deployment will need the permitted font files.
+The older starter notes above are historical; this section describes Stage 1.

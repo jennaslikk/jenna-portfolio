@@ -1,24 +1,18 @@
 <script>
- import { projects } from '$lib/projects';
- import Media from '$lib/components/Media.svelte';
+ let { data } = $props();
+ const projects = $derived(data.projects);
+ import Media from '#lib/components/Media.svelte';
  import { fade } from 'svelte/transition';
  import { onMount } from 'svelte';
 
  const categories = ['All Projects', 'AI Creative', 'Motion Graphics', 'Branding', 'Illustration'];
- // Keep Work-specific classification separate from shared project-page data.
- const projectCategories = {
-  'project-01': [],
-  'fruity-pigs': ['AI Creative', 'Motion Graphics', 'Illustration'],
-  'project-03': ['Branding'],
-  'daybreak-distillery': ['Motion Graphics'],
-  'project-05': ['AI Creative']
- };
- let mobileFiltersOpen = false;
- let selectedCategory = 'All Projects';
- let displayedCategory = 'All Projects';
- let visible = true;
- let reducedMotion = false;
- $: filteredProjects = projects.filter(project => displayedCategory === 'All Projects' || projectCategories[project.slug]?.includes(displayedCategory));
+ // Database categories preserve the existing multi-category filters.
+ let mobileFiltersOpen = $state(false);
+ let selectedCategory = $state('All Projects');
+ let displayedCategory = $state('All Projects');
+ let visible = $state(true);
+ let reducedMotion = $state(false);
+ const filteredProjects = $derived(projects.filter(project => displayedCategory === 'All Projects' || project.category.includes(displayedCategory)));
 
  onMount(() => {
   const preference = window.matchMedia('(prefers-reduced-motion: reduce)');

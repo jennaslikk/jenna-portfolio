@@ -41,3 +41,4 @@ static/fonts/
 credentials.json
 service-account*.json
 .aws/
+.neon

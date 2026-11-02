@@ -1,14 +1,14 @@
 <script>
  import { onMount } from 'svelte';
- import Media from '$lib/components/Media.svelte';
- import { fruityMedia as media } from '$lib/media';
- export let data;
- let detailsOpen = true;
- let projectContent;
- let previewAudio;
- let audioPlaying = false;
- let audioProgress = 0;
- let audioDuration = 5;
+ import Media from '#lib/components/Media.svelte';
+ const media = $derived(data.project.media);
+ let { data } = $props();
+ let detailsOpen = $state(true);
+ let projectContent = $state();
+ let previewAudio = $state();
+ let audioPlaying = $state(false);
+ let audioProgress = $state(0);
+ let audioDuration = $state(5);
 
  function formatAudioTime(seconds) {
   const safeSeconds = Number.isFinite(seconds) ? Math.floor(seconds) : 0;
@@ -109,7 +109,7 @@
 {:else if data.project.cover}
 <div class="hero-video work-card-size" class:portrait-size={data.project.format === 'portrait'}><Media src={data.project.cover} hoverSrc={data.project.hoverCover || ''} active label={data.project.title} ratio={data.project.format === 'portrait' ? '9 / 16' : '16 / 9'}/></div>
 {:else}<section class="project-section"><Media label="Project artwork"/><p>Project details coming soon.</p><a href="/work">← All work</a></section>{/if}</div></main>
-<aside class="project-sidebar"><div class="sticky-details"><div id="project-details-content" class:collapsed={!detailsOpen} aria-hidden={!detailsOpen} inert={!detailsOpen}><div class="project-details-inner"><section><h2 class="label">Client</h2><p>{data.project.client||'To be added'}</p></section>{#if data.project.slug==='fruity-pigs'}<section><h2 class="label">Context</h2><p>An illustrated, animated social media video created for Funday Sweets’ launch of Fruity Pigs. The video follows a pig through a playful story, bringing the new candy to life through character and movement.</p></section><section><h2 class="label">My role</h2><p>Creative Direction<br/>Illustration<br/>Motion Graphics<br/>AI-Assisted Animation</p></section><section><h2 class="label">Tools</h2><p>Procreate<br/>After Effects<br/>Magnific · Wan 3.0<br/>ElevenLabs</p></section>{/if}<a class="button" href="/work">View all work</a></div></div></div></aside></div>
+<aside class="project-sidebar"><div class="sticky-details"><div id="project-details-content" class:collapsed={!detailsOpen} aria-hidden={!detailsOpen} inert={!detailsOpen}><div class="project-details-inner"><section><h2 class="label">Client</h2><p>{data.project.client||'To be added'}</p></section>{#if data.project.slug==='fruity-pigs'}<section><h2 class="label">Context</h2><p>{data.project.context}</p></section><section><h2 class="label">My role</h2><p>{#each data.project.roles as role, i}{#if i > 0}<br/>{/if}{role}{/each}</p></section><section><h2 class="label">Tools</h2><p>{#each data.project.tools as tool, i}{#if i > 0}<br/>{/if}{tool}{/each}</p></section>{/if}<a class="button" href="/work">View all work</a></div></div></div></aside></div>
 
 <style>
  .hero-video.work-card-size { width: calc((85% - 162rem) * 872 / 1274 + 81rem); margin-inline: auto; }
