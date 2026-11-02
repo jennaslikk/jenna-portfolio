@@ -80,7 +80,10 @@
 </script>
 <svelte:head><title>{data.project.title} — Jenna Slikkerveer</title><meta name="description" content={data.project.description}/></svelte:head>
 <div class="split project-page"><main id="main" class="project-main"><div class="page-title" class:product-title={data.project.slug === 'fruity-pigs'}><p>{data.project.detailDescription||data.project.description} · {data.project.year||'Year'}</p><h1>{data.project.title}</h1>{#if data.project.slug === 'fruity-pigs' && data.project.productUrl}<a class="button product-button" href={data.project.productUrl} target="_blank" rel="noopener noreferrer">View product</a>{/if}</div><button class="project-details-toggle" aria-expanded={detailsOpen} aria-controls="project-details-content" onclick={() => detailsOpen = !detailsOpen}>Project details {detailsOpen ? '−' : '+'}</button><div class="project-content fade" bind:this={projectContent}>
-{#if data.project.slug==='fruity-pigs'}
+{#if data.project.createdViaStudio}
+<div class="hero-video work-card-size" class:portrait-size={data.project.format === 'portrait'}><Media label="Project artwork" ratio={data.project.format === 'portrait' ? '9 / 16' : '16 / 9'}/></div>
+{#if data.project.body}<section class="project-section"><p class="process-copy project-body">{data.project.body}</p></section>{/if}
+{:else if data.project.slug==='fruity-pigs'}
 <div class="hero-video work-card-size portrait-size" id="film"><Media src={media.film} video label="Fruity Pigs launch film" ratio="9 / 16"/></div>
 <section class="project-section" id="storyboard"><h2 class="label">Storyboard</h2><div class="storyboard"><Media src={media.storyboard} label="Original illustrated storyboard" ratio="1"/></div></section>
 <section class="project-section" id="illustrations"><h2 class="label">Selected illustrations</h2><div class="illustrations">{#each media.illustrations as src,i}<Media {src} label={`Finished illustration ${i+1}`} ratio="9 / 16"/>{/each}</div></section>
@@ -108,15 +111,16 @@
 <div class="hero-video landscape-video work-card-size" id="film"><Media src={data.project.film} video label={`${data.project.title} promotional video`} ratio="16 / 9"/></div>
 {:else if data.project.cover}
 <div class="hero-video work-card-size" class:portrait-size={data.project.format === 'portrait'}><Media src={data.project.cover} hoverSrc={data.project.hoverCover || ''} active label={data.project.title} ratio={data.project.format === 'portrait' ? '9 / 16' : '16 / 9'}/></div>
-{:else}<section class="project-section"><Media label="Project artwork"/><p>Project details coming soon.</p><a href="/work">← All work</a></section>{/if}</div></main>
-<aside class="project-sidebar"><div class="sticky-details"><div id="project-details-content" class:collapsed={!detailsOpen} aria-hidden={!detailsOpen} inert={!detailsOpen}><div class="project-details-inner"><section><h2 class="label">Client</h2><p>{data.project.client||'To be added'}</p></section>{#if data.project.slug==='fruity-pigs'}<section><h2 class="label">Context</h2><p>{data.project.context}</p></section><section><h2 class="label">My role</h2><p>{#each data.project.roles as role, i}{#if i > 0}<br/>{/if}{role}{/each}</p></section><section><h2 class="label">Tools</h2><p>{#each data.project.tools as tool, i}{#if i > 0}<br/>{/if}{tool}{/each}</p></section>{/if}<a class="button" href="/work">View all work</a></div></div></div></aside></div>
+{:else}<div class="hero-video work-card-size" class:portrait-size={data.project.format === 'portrait'}><Media label="Project artwork" ratio={data.project.format === 'portrait' ? '9 / 16' : '16 / 9'}/></div><section class="project-section"><p>Project details coming soon.</p><a href="/work">← All work</a></section>{/if}</div></main>
+<aside class="project-sidebar"><div class="sticky-details"><div id="project-details-content" class:collapsed={!detailsOpen} aria-hidden={!detailsOpen} inert={!detailsOpen}><div class="project-details-inner"><section><h2 class="label">Client</h2><p>{data.project.client||'To be added'}</p></section>{#if data.project.slug==='fruity-pigs' || data.project.createdViaStudio}<section><h2 class="label">Context</h2><p>{data.project.context}</p></section><section><h2 class="label">My role</h2><p>{#each data.project.roles as role, i}{#if i > 0}<br/>{/if}{role}{/each}</p></section><section><h2 class="label">Tools</h2><p>{#each data.project.tools as tool, i}{#if i > 0}<br/>{/if}{tool}{/each}</p></section>{/if}<a class="button" href="/work">View all work</a></div></div></div></aside></div>
 
 <style>
+ .project-body { white-space: pre-line; margin-top: 24px; }
  .hero-video.work-card-size { width: calc((85% - 162rem) * 872 / 1274 + 81rem); margin-inline: auto; }
  .hero-video.work-card-size.portrait-size { width: calc((85% - 162rem) * 402 / 1274); }
  @media(min-width:701px) and (max-width:1000px) {
-  .hero-video.work-card-size { width: calc((85vw - 50px) * 872 / 1274 + 25px); max-width: 100%; }
-  .hero-video.work-card-size.portrait-size { width: calc((85vw - 50px) * 402 / 1274); }
+  .hero-video.work-card-size { width: calc((85% - 50px) * 872 / 1274 + 25px); max-width: 100%; }
+  .hero-video.work-card-size.portrait-size { width: calc((85% - 50px) * 402 / 1274); }
  }
  @media(max-width:700px) {
   .hero-video.work-card-size, .hero-video.work-card-size.portrait-size { width: 86%; }

@@ -175,6 +175,10 @@ real credentials into chat or source files.
   deliberately unauthenticated action. Logout requires a valid identity and POST.
 - Logout deletes the database session and clears the cookie. Reusing the old
   token does not restore access. Expired and invented tokens are rejected.
+- Studio uses `Referrer-Policy: same-origin`. Unlike `no-referrer`, this preserves
+  the browser's Origin on normal same-origin HTML form submissions while keeping
+  studio URLs out of referrers sent to other sites. Refresh an already-open studio
+  page after changing this header so the browser uses the new policy.
 - Studio mutations require the same Origin as the app. SvelteKit's built-in CSRF
   protection also remains enabled. Do not disable these checks on deployment.
 - The database limits login attempts to 10 per client address and 20 per username
@@ -217,3 +221,67 @@ Remove `src/routes/studio/`, `src/hooks.server.js`, `src/lib/server/auth.js`,
 dependency. Keep `src/lib/server/db.js`, `src/lib/server/projects.js` and the public
 server loaders: the portfolio still needs them. Database auth tables can be left
 unused; do not drop tables automatically. Future course stages may add more files.
+
+
+### Studio Origin regression check
+
+With a local development server on port 4174, run
+`node scripts/test-studio-origin.js`. To use another local port, set
+`AUTH_TEST_ORIGIN` to its origin when running that command. This check creates no
+accounts and uses no administrator credentials. It verifies the response policy,
+same-origin form validation and rejection of missing, null and foreign Origins,
+including a forged same-origin Referer. The full `test:auth` command still uses a
+temporary account; do not run it when additional accounts have not been authorised.
+
+
+## Stage 3: add a portfolio project
+
+Sign in at `/studio`. Under Sign out, the Add a project form accepts title,
+category, type (landscape or portrait), year, client, description, context, roles,
+tools and body content. Title, category, type and description are required; other
+fields are optional. Enter roles and tools one per line. Category options match
+the current public filter names. Select one or more categories using the checkboxes; all selections are saved and used by the Work filters.
+
+Saving publishes immediately on `/work`, after the existing projects. No media
+upload is included: new cards and detail pages use the existing blank artwork
+placeholder. Existing assets, homepage selections, gallery CSS and existing
+project presentations are unchanged. Body content is plain text with preserved
+line breaks; HTML is escaped, not executed. Context, roles and tools are displayed
+in the new project's existing-style sidebar. No AI request is made and summary
+remains null. The unreleased Berry Lovely title remains blocked.
+
+`src/routes/studio/+page.server.js` checks authentication before reading or saving
+input. `src/lib/server/project-input.js` validates lengths and allowed choices.
+`src/lib/server/create-project.js` uses parameterised SQL and retries a title-based
+slug with numeric suffixes when needed; the database's unique constraint also
+protects concurrent submissions. New display positions are appended without
+updating original records. Saving redirects to a confirmation page, so refreshing
+it does not submit the project again. Validation failures preserve entered values.
+
+### Browser test
+
+1. Run `npm run dev` and sign in at the localhost `/studio` address.
+2. Confirm the Add a project form follows Sign out and fits a narrow/mobile window.
+3. Fill in an intended public project, select categories and a type, and save. Expect a
+   confirmation with a View project link. Refresh the confirmation: no duplicate
+   should appear. There is no edit/delete UI in this stage.
+4. Open Work, confirm the new card appears after the existing projects, and try
+   its category filter. Open its page and check the text, sidebar and placeholder.
+5. An intentional second submission with the same title should get a different
+   URL ending in a number. Do not do this with a real project unless wanted.
+6. Try submitting without a required field; validation should help you correct it.
+7. Sign out: the project form must disappear and protected submissions must fail.
+
+For automated verification, start `npm run preview -- --host 127.0.0.1 --port 4176`
+and run `node scripts/test-add-project.js` in another terminal. It uses a temporary
+session for the existing administrator (without reading or changing the password),
+creates uniquely named temporary projects, and removes only its own projects and
+session afterward. It does not create another user. Checks cover server access,
+validation, concurrent unique slugs, database persistence, public rendering,
+escaping and preservation of every original record.
+
+To remove course publishing later, remove the `createProject` action and its
+studio form, `src/lib/server/create-project.js`, `src/lib/server/project-input.js`,
+`src/lib/project-form.js` and `scripts/test-add-project.js`. Keep public loaders
+and the `createdViaStudio` rendering branch if you want already-published projects
+to remain readable. Deleting the publishing form does not delete database content.

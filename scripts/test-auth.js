@@ -21,6 +21,7 @@ async function page(cookie = '') {
  assert.equal(response.status, 200);
  assert.match(response.headers.get('cache-control'), /no-store/);
  assert.match(response.headers.get('x-robots-tag'), /noindex/);
+ assert.equal(response.headers.get('referrer-policy'), 'same-origin');
  assert(!html.includes(password));
  assert(!html.includes(process.env.DATABASE_URL));
  assert(!html.includes('password_hash'));
@@ -53,6 +54,12 @@ try {
  console.log('PASS anonymous studio: sign-in only; no-store/noindex; no secrets');
  assert.equal((await post('logout')).status, 401);
  assert.equal((await post('login', { username, password }, '', 'https://untrusted.invalid')).status, 403);
+ assert.equal((await post('login', {}, '', 'null')).status, 403);
+ const noOrigin = await fetch(origin + '/studio?/login', {
+  method: 'POST', headers: { accept: 'text/html', referer: origin + '/studio' },
+  body: new URLSearchParams(), redirect: 'manual'
+ });
+ assert.equal(noOrigin.status, 403);
  console.log('PASS logged-out protected action denied; cross-origin login denied');
  const wrong = await post('login', { username, password: randomBytes(24).toString('hex') });
  const unknown = await post('login', { username: unknownUsername, password });

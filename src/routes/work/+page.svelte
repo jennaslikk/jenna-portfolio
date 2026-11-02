@@ -2,6 +2,8 @@
  let { data } = $props();
  const projects = $derived(data.projects);
  import Media from '#lib/components/Media.svelte';
+ import { projectGrid } from '#lib/project-grid';
+ const placements = $derived(projectGrid(projects));
  import { fade } from 'svelte/transition';
  import { onMount } from 'svelte';
 
@@ -39,9 +41,9 @@
  <main id="main" class="work-main fade">
   <div class="grid-container">
    {#if visible}
-    <div class="project-grid" class:single-result={filteredProjects.length === 1} class:ai-creative-grid={displayedCategory === 'AI Creative'} class:motion-grid={displayedCategory === 'Motion Graphics'} in:fade={{ duration: reducedMotion ? 0 : 125 }} out:fade={{ duration: reducedMotion ? 0 : 125 }} onoutroend={finishFilter}>
+    <div class="project-grid" class:single-result={filteredProjects.length === 1} class:ai-creative-grid={displayedCategory === 'AI Creative' && filteredProjects.every(project => project.format === 'portrait')} class:motion-grid={displayedCategory === 'Motion Graphics'} in:fade={{ duration: reducedMotion ? 0 : 125 }} out:fade={{ duration: reducedMotion ? 0 : 125 }} onoutroend={finishFilter}>
      {#each filteredProjects as project (project.slug)}
-      <article class={`project-card card-${projects.indexOf(project) + 1}`} class:portrait-card={project.format === 'portrait'}>
+      <article class={`project-card card-${projects.indexOf(project) + 1}`} class:portrait-card={project.format === 'portrait'} class:pattern-staggered={displayedCategory === 'All Projects' && placements[project.slug].staggered} style:grid-row-start={displayedCategory === 'All Projects' ? placements[project.slug].row : undefined} style:grid-column-start={displayedCategory === 'All Projects' ? placements[project.slug].column : undefined}>
        <a href={`/work/${project.slug}`}>
         <Media src={project.cover || ''} hoverSrc={project.hoverCover || ''} hoverVideoSrc={project.hoverVideo || ''} active autoplay label={project.title} ratio={project.format === 'portrait' ? '9 / 16' : '16 / 9'}/>
         <h2 class="label">{project.title}</h2>
@@ -72,8 +74,12 @@
  .mobile-filter-toggle:focus-visible,
  .filter-list button:focus-visible { outline: var(--hairline) solid var(--line); outline-offset: 5px; }
  .grid-container { min-height: 60vh; }
- .project-grid { --column-gap: 42px; width: 85%; column-gap: var(--column-gap); grid-template-columns: minmax(0,402fr) minmax(0,470fr) minmax(0,402fr); }
- .project-card { min-width: 0; }
+ .project-grid { --column-gap: 42px; --row-gap: 48px; row-gap: var(--row-gap); width: 85%; column-gap: var(--column-gap); grid-template-columns: minmax(0,402fr) minmax(0,470fr) minmax(0,402fr); }
+ .project-card { min-width: 0; align-self: start; }
+ .pattern-staggered { margin-top: 110px; }
+ /* Size every card by format, including projects added after the original five. */
+ .project-card:not(.portrait-card) { grid-column-end: span 2; }
+ .portrait-card { grid-column-start: 3; grid-column-end: 4; }
  .motion-grid .card-2 { grid-row: 1; }
  .motion-grid .card-4 { grid-row: 1; }
  /* A filtered card keeps its original grid width, independent of result order. */
@@ -88,12 +94,13 @@
  .filter-list button.active { font-family: 'futura-pt-bold', var(--sans); font-weight: 700; }
  .empty-state { grid-column: 1 / -1; }
  @media(min-width:1001px) {
-  .project-grid { --column-gap: 81rem; }
+  .project-grid { --column-gap: 81rem; --row-gap: 70rem; }
+  .pattern-staggered { margin-top: 175rem; }
   .filter-list { gap: 16rem; }
   .filter-list button { font-size: 24rem; line-height: 28.8rem; }
  }
  @media(max-width:1000px) {
-  .project-grid { --column-gap: 25px; }
+  .project-grid { --column-gap: 25px; --row-gap: 36px; }
   .work-layout { display: flex; flex-direction: column; }
   .work-sidebar { order: -1; border-top: 0; border-left: 0; border-bottom: 0; }
   .work-sidebar .work-filters { position: static; max-height: none; padding: 28px 7%; }
@@ -106,6 +113,7 @@
   .work-main { padding-top: 20px; }
   .project-grid { display: block; width: 86%; }
   .single-result .project-card { width: 100%; }
+  .pattern-staggered { margin-top: 0; }
   .project-card :global(.media) { max-height: none; }
  }
 </style>

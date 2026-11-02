@@ -9,7 +9,9 @@ export async function handle({ event, resolve }) {
  event.setHeaders({
   'cache-control': 'private, no-store',
   'x-robots-tag': 'noindex, nofollow',
-  'referrer-policy': 'no-referrer',
+  // no-referrer can turn a normal form's Origin into null and break CSRF checks.
+  // Keep same-origin form headers without leaking studio URLs to other sites.
+  'referrer-policy': 'same-origin',
   'x-frame-options': 'DENY'
  });
  if (event.request.method !== 'GET' && event.request.method !== 'HEAD') {
