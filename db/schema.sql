@@ -37,3 +37,11 @@ CREATE TABLE IF NOT EXISTS comments (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS comments_project_created_idx ON comments(project_id, created_at DESC);
+
+-- Login counters live in Postgres so limits also apply across server instances.
+CREATE TABLE IF NOT EXISTS login_attempts (
+ key text NOT NULL,
+ window_start timestamptz NOT NULL,
+ attempts integer NOT NULL DEFAULT 1,
+ PRIMARY KEY (key, window_start)
+);

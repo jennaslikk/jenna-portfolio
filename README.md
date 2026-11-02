@@ -129,3 +129,91 @@ serve static files by direct URL. No public deployment has been performed.
 Licensed PP Editorial New fonts remain excluded from GitHub. Futura PT continues
 through Adobe Fonts. The local CLI deployment will need the permitted font files.
 The older starter notes above are historical; this section describes Stage 1.
+
+
+## Stage 2: private studio sign-in (current)
+
+Type `/studio` into the browser address bar. There are no links to it on public
+pages and no public sign-up. A logged-out visitor sees only the sign-in form.
+A signed-in visitor sees their username and a Sign out button. Project publishing,
+comments and API tools are later stages and have not been added.
+
+### Create your administrator account locally
+
+The existing ignored `.env.local` or `.env` must contain `DATABASE_URL` and
+`DATABASE_URL_UNPOOLED`. No new API keys or managed Neon Auth setup are required.
+The authentication tables already exist from Stage 1. The additional database
+login-throttling table is defined in `db/migrations/002-auth.sql` and included in
+`db/schema.sql`. Run `npm run db:auth` on another database before using the studio.
+
+1. In your own interactive terminal, run `npm run create-user -- YOUR_USERNAME`,
+   replacing `YOUR_USERNAME` with your chosen username (3–40 letters, digits,
+   underscores or hyphens). Usernames are stored in lowercase.
+2. Enter a unique password at the hidden prompt, then enter it again to confirm.
+   It must have at least 12 characters and at most 72 UTF-8 bytes. Long Unicode
+   passwords can reach the byte limit sooner than ASCII passwords.
+3. The script stores only a salted bcrypt hash (cost 12), never the password.
+   It will not overwrite an existing username. There is no password reset UI yet.
+4. Run `npm run dev`, use the printed **localhost** address and type `/studio`.
+   Secure cookies are always enabled: use localhost for browser development and
+   HTTPS on deployment, rather than an HTTP address on your local network.
+
+For the required command-line interface, `npm run create-user -- USERNAME PASSWORD`
+is also supported. Prefer the hidden prompt: passing a password as an argument can
+leave it in shell history and briefly expose it in the process list. Never paste
+real credentials into chat or source files.
+
+### Security and session behaviour
+
+- `src/hooks.server.js` validates the studio cookie on the server and sets
+  `event.locals.user`. Authentication errors fail closed; public pages do not
+  acquire a new authentication dependency.
+- `src/lib/server/auth.js` creates a fresh random 256-bit session token after login.
+  Its SHA-256 hash is stored as the session id in Neon; the usable token stays in
+  an HttpOnly, Secure, SameSite=Lax cookie. Sessions expire after 12 hours.
+- Every protected studio load/action checks the server identity. Login is the
+  deliberately unauthenticated action. Logout requires a valid identity and POST.
+- Logout deletes the database session and clears the cookie. Reusing the old
+  token does not restore access. Expired and invented tokens are rejected.
+- Studio mutations require the same Origin as the app. SvelteKit's built-in CSRF
+  protection also remains enabled. Do not disable these checks on deployment.
+- The database limits login attempts to 10 per client address and 20 per username
+  in a fixed 15-minute window. Repeated wrong passwords get a friendly error;
+  unknown usernames get the same error. Limits also count successful logins.
+- No password, bcrypt hash or session token is returned as page data. Responses
+  are marked private/no-store and noindex/nofollow. The address being unlinked
+  does not replace these server checks.
+- Queries use tagged parameters so entered usernames are data, not SQL commands.
+
+### Test Stage 2
+
+Run `npm run check` and `npm run build`. For browser testing run `npm run dev`:
+
+1. Open `/studio` in a private browser window: only the sign-in form should appear.
+2. Try a wrong password and then a nonexistent username: both should show the
+   same generic error and no private content.
+3. Sign in correctly: you should see “Signed in as …” and Sign out. Refresh the
+   page to confirm the session persists. Do not share screenshots of credentials.
+4. In browser developer tools, check the `studio_session` cookie for HttpOnly,
+   Secure and SameSite=Lax. It should not be available through `document.cookie`.
+5. Sign out, then refresh and use the Back button: protected content must not
+   become usable. A fresh private window must still require sign-in.
+6. Check narrow/mobile widths, keyboard navigation, visible focus, Home, Work,
+   project pages, fonts and media. The public portfolio files were not redesigned.
+
+For repeatable server-level verification, start `npm run preview -- --host
+127.0.0.1 --port 4173`, then run `npm run test:auth` in another terminal. This
+creates a temporary random test account, exercises failure/success, server access
+checks, cookie flags, CSRF rejection, throttling, expiry and logout against Neon,
+and removes its own test account afterward. It never prints the generated
+credentials. It does not replace a real browser check of cookie storage or layout.
+
+### Remove course authentication later
+
+Remove `src/routes/studio/`, `src/hooks.server.js`, `src/lib/server/auth.js`,
+`src/lib/server/passwords.js`, `scripts/create-user.js`, `scripts/setup-auth.js`,
+`scripts/test-auth.js` and `scripts/load-private-env.js`. Remove the corresponding
+`create-user`, `db:auth` and `test:auth` package scripts and the `bcryptjs`
+dependency. Keep `src/lib/server/db.js`, `src/lib/server/projects.js` and the public
+server loaders: the portfolio still needs them. Database auth tables can be left
+unused; do not drop tables automatically. Future course stages may add more files.
