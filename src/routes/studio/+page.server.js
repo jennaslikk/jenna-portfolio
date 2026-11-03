@@ -1,8 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { generateProjectSummary } from '#lib/server/project-summary';
-import { validPaletteMode } from '#lib/studio/palette-options';
-import { normaliseHex, getPalette } from '#lib/server/color-api';
+import { getFontDetails } from '#lib/server/font-details';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
 import { studioComments, saveComment, validateComment, deleteComment } from '#lib/server/comments';
 import { createProject } from '#lib/server/create-project';
@@ -58,27 +57,15 @@ export const actions = {
    return fail(502, { values, summaryMessage: 'The AI summary could not be generated. Please try again later, or check the OpenRouter model and credits. Your draft has been kept.' });
   }
  },
- generatePalette: async ({ locals, request, fetch }) => {
-  // Check identity before parsing input or contacting the external service.
+ fontDetails: async ({ locals, request, fetch }) => {
   requireUser(locals);
-  if (Number(request.headers.get('content-length') || 0) > 1024) {
-   return fail(400, { paletteMessage: 'Please enter a HEX colour such as #DEC1DA.' });
-  }
+  if (Number(request.headers.get('content-length') || 0) > 1024) return fail(400, { fontDetailsMessage: 'Choose a font from the collection.' });
   let input;
-  try { input = await request.formData(); } catch {
-   return fail(400, { paletteMessage: 'Please use the colour palette form.' });
-  }
-  const raw = input.get('hex');
-  const hex = normaliseHex(raw);
-  const paletteMode = input.get('mode') ?? 'analogic';
-  if (!validPaletteMode(paletteMode)) return fail(400, { paletteMessage: 'Choose one of the available palette schemes.' });
-  const paletteHex = typeof raw === 'string' ? raw.slice(0, 16) : '';
-  if (!hex) return fail(400, { paletteHex, paletteMode, paletteMessage: 'Enter 3 or 6 hexadecimal digits, with or without #.' });
-  try {
-   return { paletteHex: `#${hex}`, paletteMode, palette: await getPalette(hex, fetch, 8000, paletteMode) };
-  } catch {
-   return fail(502, { paletteHex: `#${hex}`, paletteMode, paletteMessage: 'The colour service could not generate a palette. Please try again shortly.' });
-  }
+  try { input = await request.formData(); } catch { return fail(400, { fontDetailsMessage: 'Please use Font details.' }); }
+  const fontId = input.get('fontId');
+  if (typeof fontId !== 'string' || !/^[a-z0-9-]{1,60}$/.test(fontId)) return fail(400, { fontDetailsMessage: 'Choose a font from the collection.' });
+  try { return { fontDetails: await getFontDetails(fontId, fetch) }; }
+  catch { return fail(502, { fontDetailsMessage: 'Live font information is temporarily unavailable. The saved font and quote remain available.' }); }
  },
  deleteComment: async ({ locals, request, cookies }) => {
   requireUser(locals);
@@ -131,6 +118,14 @@ export const actions = {
   const { values, errors, project } = validateProject(formData);
   if (Object.keys(errors).length) {
    return fail(400, { values, errors, projectMessage: 'Please check the highlighted fields.' });
+  }
+  // Stage A has no layout persistence: do not silently publish while dropping sections.
+  const rawLayout = formData.get('builderLayout');
+  if (rawLayout) {
+   try {
+    const layout = JSON.parse(String(rawLayout));
+    if (!Array.isArray(layout.sections) || layout.sections.length) return fail(400, { values, projectMessage: 'Section layouts are preview-only in Stage A. Your project has not been published.' });
+   } catch { return fail(400, { values, projectMessage: 'Please check the section layout before publishing.' }); }
   }
   let saved;
   try { saved = await createProject(project, locals); } catch {

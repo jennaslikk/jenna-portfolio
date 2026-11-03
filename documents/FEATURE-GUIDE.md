@@ -29,11 +29,11 @@ Comments refer to a project's database id. Studio retrieves comments for the sel
 
 ## Two different API features
 
-The Color API is a normal external data API. The server sends a validated HEX code to `/id` and `/scheme`. It receives JSON, selects safe colour names/HEX values, and shows a seed colour plus five analogous colours. It requires no API key. Network failure gives an honest retry message.
+Fontsource is the normal external data API. Showing a supported font automatically submits its ID to the protected Studio action, without a visible Font Details control. The server checks the ID against the curated catalogue, requests `https://api.fontsource.org/v1/fonts/{id}`, validates the response and uses the returned family name for the label; the validated metadata is cached without displaying the removed detail rows. Results are cached for 24 hours and no key is needed. A failure shows a helpful message while the font preview remains available. Independent fonts outside Fontsource keep their official specimen links. Fontsource does not write the quotes or generate typefaces.
 
 OpenRouter is the AI API. When you click Generate AI Summary in Studio, the server sends only the entered description and context with a short instruction. The model returns a short plain-text draft. You can edit or regenerate it before publishing. Save project stores the reviewed text in `projects.summary` without making another AI request. The UI explicitly labels it AI-generated. Review it for accuracy. A missing key or failed generation keeps your entered fields and previous draft; we do not invent a replacement.
 
-An atomic database claim prevents the same project from requesting a summary twice. Public views and refreshes read the stored result. New project submissions are separate requests and may cost credits, so keep the account private and use a provider spending limit.
+Only an explicit Generate AI Summary click makes an AI request. Public views and refreshes read the stored approved result. Regeneration is a separate request and may cost credits, so keep the account private and use a provider spending limit.
 
 ## JavaScript and Svelte concepts to explain
 
@@ -45,7 +45,7 @@ An atomic database claim prevents the same project from requesting a summary twi
 - `try`/`catch` handles a failure without exposing private diagnostics.
 - `$props` receives data from a parent/server; `$state` tracks changing UI state; `$derived` computes values from that state.
 - Most pages use Svelte 5 runes. `Media.svelte` retains older `export let` props syntax supported by Svelte 5; it is a pre-existing component, not a separate framework.
-- A component is reusable UI. `Media.svelte` handles image/video placeholders; `PaletteTool.svelte` renders palette output.
+- A component is reusable UI. `Media.svelte` handles image/video placeholders; `FontQuoteTool.svelte` renders the daily specimen and external font metadata.
 - A server file runs outside the browser. It can read private keys; browser components must not.
 
 ## Honest limitations

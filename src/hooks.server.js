@@ -12,7 +12,8 @@ export async function handle({ event, resolve }) {
   // no-referrer can turn a normal form's Origin into null and break CSRF checks.
   // Keep same-origin form headers without leaking studio URLs to other sites.
   'referrer-policy': 'same-origin',
-  'x-frame-options': 'DENY'
+  // Only the authenticated preview may be framed, and only by this same website.
+  'x-frame-options': event.url.pathname === '/studio/preview' ? 'SAMEORIGIN' : 'DENY'
  });
  if (event.request.method !== 'GET' && event.request.method !== 'HEAD') {
   // Explicit origin checking covers every studio POST, not just visible HTML forms.

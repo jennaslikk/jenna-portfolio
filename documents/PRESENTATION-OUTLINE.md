@@ -23,7 +23,7 @@ This is an outline and rehearsal guide. Create/export the actual concise slide d
 | 0:30–0:45 | Type `/studio`, sign in | “Course tools are unlinked and protected on the server.” |
 | 0:45–1:10 | Generate a draft, review it and save the prepared project | “Generate AI Summary asks OpenRouter for a draft. I can edit it before Save project stores the approved text in Neon.” Allow time for the request. |
 | 1:10–1:30 | Add a comment, refresh | “This is saved in PostgreSQL, so refreshing does not lose it.” |
-| 1:30–1:45 | Generate the colour palette | “This is a separate external API. It returns a name and colour scheme from a HEX value.” |
+| 1:30–1:45 | Show a Fontsource-backed daily font | “The font tool automatically requests metadata from Fontsource and uses the returned family name. This is separate from the AI feature.” |
 | 1:45–2:00 | Show stored summary and sign out | “The summary is labelled AI-generated. Refresh reads the saved result. Signing out removes access to the tools.” |
 
 If typing or network calls take too long, show already prepared results and explain what was tested. Do not claim a failed request succeeded. Practise with a timer.
@@ -88,7 +88,7 @@ Explain what actually happened:
 - We tested logged-out writes, invalid input, stored data after refresh, escaped HTML, unique slugs and failed API requests. Real service tests were distinguished from mocks.
 - One debugging example is responsive typography: artboard-scaled `rem` values became too small around 1001px, so computed browser sizes were checked and the transition was adjusted.
 
-Mention the references you actually used: SvelteKit form actions, Neon SvelteKit documentation, The Color API docs and OpenRouter API docs. Link them in the final deck's references/notes.
+Mention the references you actually used: SvelteKit form actions, Neon SvelteKit documentation, Fontsource API docs and OpenRouter API docs. Link them in the final deck's references/notes.
 
 ### Slide 5 — recap (7:30–8:00)
 
@@ -110,7 +110,7 @@ Invite questions and stop teaching at minute eight.
 | What prevents SQL injection? | Parameterised queries keep entered values separate from SQL commands. |
 | What if someone enters HTML? | We show escaped plain text; it does not run as HTML/JavaScript. |
 | What if an API fails? | The user sees an honest error. AI generation failure keeps my form and previous draft; I can still save without a summary. |
-| Which API is AI? | OpenRouter generates text. The Color API returns colour information; it is not the AI feature. |
+| Which API is AI? | OpenRouter generates text. Fontsource returns font metadata; it is not the AI feature. |
 | How did you choose the model? | A short summary needs a small output budget. I configured a low-cost text model and checked the real account/model before the live test. Do not invent a price or claim a model test that did not run. |
 | Can you explain `$state` and `$derived`? | State stores the selected category; a derived value calculates which projects match it. |
 | What did AI do and what did you verify? | Explain your real prompts, code review and the test evidence in VALIDATION.md. |

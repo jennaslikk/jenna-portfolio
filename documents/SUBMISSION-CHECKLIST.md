@@ -6,7 +6,7 @@ Based on the original assignment PDF, pages 3–4. Check VALIDATION.md for the l
 
 - [x] Configure OpenRouter privately: the saved key is detected and accepted by OpenRouter.
 - [x] Verified a real Gemini summary through Studio after paid credits were added: Neon storage, reload rendering, unchanged original projects and temporary-record cleanup all passed. Current-key browser/Git scans passed.
-- [ ] Rehearse sign-in, publishing, refreshing stored comments, category filtering, colour palette generation, summary display and sign-out.
+- [ ] Rehearse sign-in, publishing, refreshing stored comments, category filtering, Fontsource font-details lookup, summary display and sign-out.
 - [ ] Prepare/export the actual presentation slide deck. The Markdown outline is preparation material, not a finished PowerPoint/PDF deck.
 - [ ] Put the finished slide deck in `documents/` so it is included in the repository.
 - [ ] Review and approve the final changes, then commit them yourself or explicitly authorize the commit. Keep earlier meaningful commits.
@@ -37,7 +37,7 @@ The repository was publicly accessible during the audit at `https://github.com/j
 ```bash
 npm run check
 npm run build
-node --test scripts/color-api.test.js scripts/openrouter.test.js
+node --test scripts/font-details.test.js scripts/openrouter.test.js
 ```
 
 - [ ] Read the output; a build starting is not the same as a successful build.

@@ -1,9 +1,10 @@
 <script>
+ import ProjectBuilder from '#lib/components/ProjectBuilder.svelte';
  import { enhance } from '$app/forms';
+ let builderSections = $state([]);
  let savingProject = $state(false);
  let generatingSummary = $state(false);
- import FontPairingTool from '#lib/components/FontPairingTool.svelte';
- import PaletteTool from '#lib/components/PaletteTool.svelte';
+ import FontQuoteTool from '#lib/components/FontQuoteTool.svelte';
  import { projectCategories, projectTypes, projectFields } from '#lib/project-form';
  let { data, form } = $props();
 </script>
@@ -17,7 +18,6 @@
  <section class="studio-panel" aria-labelledby="studio-title">
   <h1 id="studio-title">Studio</h1>
   {#if data.user}
-   <p>Signed in as {data.user.username}</p>
    {#if form?.message}<p class="message" role="alert">{form.message}</p>{/if}
    <section class="add-project" aria-labelledby="add-project-title">
     <h2 id="add-project-title">Add a project</h2>
@@ -94,7 +94,9 @@
        </div>
       {/if}
      {/each}
-     <button class="button" type="submit" disabled={savingProject || generatingSummary}>{savingProject ? 'Saving project…' : 'Save project'}</button>
+     <ProjectBuilder bind:sections={builderSections} />
+     {#if builderSections.length}<p class="hint" role="status">This section layout is preview-only in Stage A. It cannot be published yet; refreshing or leaving Studio clears these unsaved sections.</p>{/if}
+     <button class="button" type="submit" disabled={savingProject || generatingSummary || builderSections.length > 0}>{savingProject ? 'Saving project…' : 'Save project'}</button>
     </form>
    </section>
    <section class="comments-section" id="comments" aria-labelledby="comments-title">
@@ -172,8 +174,7 @@
  {#if data.user}
   <aside class="studio-sidebar" aria-label="Creative tools">
    <div class="studio-tools">
-    <PaletteTool result={form} />
-    <FontPairingTool />
+    <FontQuoteTool result={form} />
    </div>
   </aside>
  {/if}
@@ -231,8 +232,12 @@
  }
  .studio { flex-grow: 1; display: grid; align-items: center; justify-items: center; padding-top: 64px; padding-right: 7%; padding-bottom: 100px; padding-left: 7%; }
  /* The tools have their own scroll area so both remain reachable in a short window. */
+ /* One shared column width keeps the header, tools and footer dividers aligned. */
+ @media(min-width:1001px){
+  :global(body:has(.studio.workspace)){--sidebar:max(220px,15.739583%);}
+ }
  .studio.workspace{
-  grid-template-columns:minmax(0,1fr) clamp(320px,30vw,480px);
+  grid-template-columns:minmax(0,1fr) var(--sidebar);
   align-items:start;
   padding-top:0;
   padding-right:0;

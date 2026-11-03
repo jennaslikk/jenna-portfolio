@@ -2,7 +2,7 @@
 
 A working design portfolio built with **SvelteKit 2, Svelte 5, JavaScript and CSS**, with project data stored in **PostgreSQL on Neon**. This is Jenna's individual Programming & Methods project, ACE2627, Berghs. The teacher approved a portfolio instead of a blog; projects fulfil the post/listing requirement.
 
-The public site stays focused on design work. Authentication, publishing, database comments and the colour API live on the unlinked `/studio` page.
+The public site stays focused on design work. Authentication, publishing, database comments and font metadata lookups live on the unlinked `/studio` page.
 
 ## Assignment and verification
 
@@ -25,11 +25,23 @@ The brief requires a public repository with meaningful commit history, a README 
 | Username/password sign-in and sign-out | Unlinked `/studio`; no public registration. |
 | Protected project publishing | A signed-in studio form validates input, makes a unique slug and saves a project in Neon. New projects use artwork placeholders. |
 | Database comments | Studio selects a project, adds comments, lists newest first and allows signed-in deletion. |
-| External API | Studio calls The Color API on the server for a colour name and five-colour palette, with analogous, complementary, triadic, tetradic and monochrome scheme options. |
+| External API | Font of the Day automatically calls the protected Fontsource metadata action for supported selections, validates the response and uses the returned family name. Public metadata is cached for 24 hours; no Font Details control or detail rows are shown. |
 | AI summaries | In Studio, click Generate AI Summary below description/context, review or edit the draft, then save. Only that button calls OpenRouter; Save project stores the final text in Neon and displays it in Studio and the project sidebar. A working private key is required for generation. |
 | SQL persistence | `projects`, `comments`, `users`, `sessions` and `login_attempts` tables in Neon. |
 
 See VALIDATION.md for the distinction between implemented code, mocked tests, live tests and items still awaiting verification.
+
+## Project builder — Stage A
+
+The Add Project form now contains a manual section editor and private full-page preview. Choose among 12 section types and 9 existing editorial presentation patterns; edit headings, descriptions and additional text, reorder/remove sections, and preview at actual 1440px desktop or 390px mobile viewport widths. The preview includes entered project metadata, body text, summary, navigation, footer and details sidebar.
+
+**This foundation is preview-only.** Section layouts live in browser memory and are cleared by refresh or leaving Studio. No layout is written to Neon yet. Media blocks are placeholders until Stage C. AI layout generation is Stage B; draft saving, editing, publication and unpublication are Stage D. The original simple project-publishing and AI-summary workflows remain available when no section layout is active. Active layouts are blocked from that legacy publish action so sections cannot silently be dropped.
+
+The public project route and `/studio/preview` both use `src/lib/components/project/ProjectPage.svelte`, with reusable new-layout sections in `ProjectSections.svelte`. Existing custom projects keep their original rendering branches. The private preview requires authentication, has no draft data in its URL or server HTML, receives validated data only from its same-origin parent window, and uses the same public CSS in its own iframe viewport. Only this authenticated preview route permits same-origin framing; the main Studio retains frame denial.
+
+The existing Neon `content` JSONB column was confirmed by a read-only schema check; no schema migration or record changes were needed for Stage A. Future media selection will be restricted to approved existing public paths. A private draft page does not make files in `static/` private. Permanent private uploads need a separate storage decision and must never be sent to AI automatically.
+
+See [builder stages and verification](documents/PROJECT-BUILDER.md). Unit checks: `node --test scripts/project-sections.test.js`.
 
 ## Intentionally left out
 
@@ -38,7 +50,7 @@ See VALIDATION.md for the distinction between implemented code, mocked tests, li
 - No rich-text/HTML editor: project body and comments are rendered as escaped plain text.
 - No automatic AI generation on saving, bulk processing or retry. Explicit regeneration is available before publishing. A failed AI call keeps the entered fields and previous draft.
 - No search or theme switcher: the category filter satisfies the JavaScript alternative.
-- No weather widget: The Color API satisfies the external-API requirement.
+- No weather widget: Fontsource metadata lookups satisfy the external-API feature requirement.
 - Unreleased work stays a generic placeholder and is excluded from seeds and publishing.
 - No deployment has been performed as part of this verification. `adapter-auto` remains configured.
 
@@ -95,14 +107,14 @@ See VALIDATION.md for the distinction between implemented code, mocked tests, li
 
    Open the printed **localhost** address. Type `/studio` manually. Secure cookies work on localhost and HTTPS; do not use a plain-HTTP LAN IP for sign-in. Keep the terminal running. Restart after changing private configuration.
 
-7. In studio: sign in, enter a project description/context, click Generate AI Summary, review/edit the draft, save the project, add a comment, generate a palette, then sign out. Publishing a project makes it visible on Work immediately.
+7. In studio: sign in, enter a project description/context, click Generate AI Summary, review/edit the draft, save the project, add a comment, show a Fontsource-backed daily face, then sign out. Publishing a project makes it visible on Work immediately.
 
 ## Checks and repeatable tests
 
 ```bash
 npm run check
 npm run build
-node --test scripts/color-api.test.js scripts/openrouter.test.js
+node --test scripts/font-details.test.js scripts/openrouter.test.js scripts/font-discovery.test.js
 npm run preview -- --host 127.0.0.1 --port 4173
 ```
 
@@ -113,10 +125,9 @@ AUTH_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-studio-origin.js
 AUTH_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-auth.js
 COMMENTS_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-comments.js
 SUMMARY_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-summary-workflow.js
-PALETTE_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-palette.js
 ```
 
-These integration tests use the configured **real Neon database** and require permission to create temporary records. They clean up only their generated fixtures; authentication also updates the normal login counters. Prefer an isolated test branch and avoid running tests while editing content. They are not read-only commands. The comments/summary/palette scripts need an existing administrator. The palette test contacts the real Color API; summary tests mock AI and incur no model charges.
+These integration tests use the configured **real Neon database** and require permission to create temporary records. They clean up only their generated fixtures; authentication also updates the normal login counters. Prefer an isolated test branch and avoid running tests while editing content. They are not read-only commands. The comments/summary scripts need an existing administrator. Summary tests mock AI and incur no model charges. Font-details unit tests use mocked public API responses and require no database or paid requests.
 
 `PROJECT_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-add-project.js` verifies publishing and unique slugs. It does not submit the generation action; saving alone never calls OpenRouter. The summary workflow test mocks draft generation and checks that edited text survives a real Neon save and page reload. A real AI test remains separate and requires explicit approval. Each click of Generate AI Summary, including regeneration, can incur a provider charge.
 
@@ -128,7 +139,7 @@ LIVE_SUMMARY_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-live-summary.js
 
 This explicitly generates one draft, saves it as a temporary project through the authenticated action, checks the saved summary and rendering, then removes only its temporary project/session. It can spend provider credits and never retries automatically. Do not run it merely to check whether a key exists.
 
-Also inspect `/work` filters, mobile project-details controls, keyboard focus, media playback, the palette copy button and 404 behaviour. Test 390px, 768px, 1000px, 1001px, 1440px and 1920px widths. Passing automated tests does not replace rehearsing the actual demonstration.
+Also inspect `/work` filters, mobile project-details controls, keyboard focus, media playback, Font details and 404 behaviour. Test 390px, 768px, 1000px, 1001px, 1440px and 1920px widths. Passing automated tests does not replace rehearsing the actual demonstration.
 
 ## Architecture in plain language
 
@@ -169,11 +180,14 @@ A GitHub-only build will not contain the excluded PP Editorial New fonts. Do not
 
 For signed-in users, the existing Add Project and Comments forms stay in the main column. A thin divider separates a sticky right tools sidebar on desktop; at 1000px and below the tools stack underneath. The sidebar can scroll independently in short desktop windows.
 
-- **Colour palette:** reuses the existing protected Color API action and `/id` + `/scheme` helper. `src/lib/studio/palette-options.js` lists the allowed schemes, validated before any request. Palette results stay inside their component so exploring colours does not reset an unsaved project or summary draft.
-- **Font pairing:** `src/lib/components/FontPairingTool.svelte` uses the curated list and rules in `src/lib/studio/font-pairings.js`. Serif headlines pair with sans-serif body text; sans-serif headlines pair with serif body text; display headlines pair with restrained sans-serif body text. Choose a headline family or explore a category, then refresh to rotate three suggestions. These are rule-based starting points, not AI output.
-- **No Google API key or new environment variable is required.** The full Google Fonts Developer API is unnecessary for this small catalogue. The component loads only its preview fonts through Google's key-free CSS API; Futura PT and PP Editorial New continue to style the interface. Google font stylesheets are mounted only with the authenticated Studio tools, not on public pages. Font previews require internet access and fall back to local generic fonts offline. No OpenRouter request is made for font pairings.
+- **Fontsource external API:** Selecting a Fontsource-backed typeface automatically requests current metadata through the authenticated Studio action. The server uses a fixed allowlisted endpoint, validates the response and caches it for 24 hours per server instance. Results stay local to the font component so project drafts are preserved. Independent Velvetyne faces retain official publisher links instead of an unsupported Fontsource lookup. This replaces the former Color API tool at Jenna’s request.
+- **Font & Quote of the Day:** `src/lib/components/FontQuoteTool.svelte` displays a daily editorial specimen. `src/lib/studio/font-catalogue.js` is a verified metadata snapshot for 12 open-source fonts; nine were checked through Fontsource's public API and three through official Velvetyne repositories. League of Moveable Type designs are included. Credits, official sources, pinned font-file URLs and OFL licence links are recorded per font.
+- `src/lib/studio/font-discovery.js` chooses a font and original line from the Europe/Stockholm calendar date. The same date gives the same pairing after refresh. Fonts rotate over 12 days and original lines over 13 days; exact daily pairs repeat after 156 days. The component checks for a new date every 30 seconds and when the tab regains focus/visibility. Discover Another explores a different pairing using the standard filled button. It leaves the official daily choice unchanged; refresh or a new day restores the daily selection. Extra descriptive metadata remains removed at Jenna’s request.
+- **No additional key, paid service, OpenRouter call or database write is needed.** The curated catalogue is cached in source; Selecting a supported font additionally requests current Fontsource data through the server. The browser loads only the selected, licensed WOFF2 face from pinned jsDelivr URLs, caching loaded faces in memory. Only the quote uses it; the interface remains Futura PT and PP Editorial New. A failed font load is clearly labelled as a fallback, with the official specimen link still available. No proprietary fonts are loaded or copied into the repository.
+- All 13 short lines were written for this feature; their origin is documented in source and the font-source notes. They are not attributed to historical people or represented as previously published quotations.
 
-Google references: [CSS API](https://developers.google.com/fonts/docs/css2), [Developer API metadata and key requirements](https://developers.google.com/fonts/docs/developer_api). The catalogue is intentionally curated rather than a live search of every Google font.
+See [font sources and licences](documents/FONT-DISCOVERY-SOURCES.md). The catalogue is deliberately curated, not an automatic scraper or an unfiltered directory. Fontsource's [public metadata API](https://fontsource.org/docs/api/font-id) can supply font identity, variants and file URLs; designer credits and licences were cross-checked against publisher sources.
+
 
 ## Removing course features later
 
@@ -182,8 +196,8 @@ Do not delete all of `src/lib/server/`: public portfolio loaders still use `db.j
 To keep the database-backed portfolio and remove only course tools:
 
 - Remove `src/routes/studio/` and `src/hooks.server.js` (or just its studio-specific handling).
-- Remove `src/lib/server/auth.js`, `passwords.js`, `create-project.js`, `project-input.js`, `comments.js`, `color-api.js`, `openrouter.js`, `project-summary.js`.
-- Remove `src/lib/components/PaletteTool.svelte`, `src/lib/components/FontPairingTool.svelte`, `src/lib/studio/`, `src/lib/project-form.js`, account/setup-auth scripts and the feature-specific test scripts. Keep `scripts/setup-database.js` and any environment helper still used by remaining scripts.
+- Remove `src/lib/server/auth.js`, `passwords.js`, `create-project.js`, `project-input.js`, `comments.js`, `font-details.js`, `openrouter.js`, `project-summary.js`.
+- Remove `src/lib/components/FontQuoteTool.svelte`, `src/lib/studio/`, `src/lib/project-form.js`, account/setup-auth scripts and the feature-specific test scripts. Keep `scripts/setup-database.js` and any environment helper still used by remaining scripts.
 - Remove the studio-only imports and course settings in shared files, the `test:auth`, `create-user` and `db:auth` npm commands, and `bcryptjs` if no longer used.
 - Remove OpenRouter environment settings and, if desired, the explicitly labelled AI sidebar display. Stored summaries can remain as project data.
 - Tables for users, sessions, login attempts and comments can remain unused. Do not drop tables or delete stored content without a separate decision and backup.
@@ -192,6 +206,6 @@ For a completely database-free portfolio, first replace all three public `+page.
 
 ## References and ownership
 
-Implementation references: [SvelteKit form actions](https://svelte.dev/docs/kit/form-actions), [Neon with SvelteKit](https://neon.com/docs/guides/sveltekit), [The Color API](https://www.thecolorapi.com/docs), [OpenRouter API](https://openrouter.ai/docs/api/reference/overview). The supplied assignment PDF is assessment reference material, not portfolio content.
+Implementation references: [SvelteKit form actions](https://svelte.dev/docs/kit/form-actions), [Neon with SvelteKit](https://neon.com/docs/guides/sveltekit), [Fontsource API](https://fontsource.org/docs/api/font-id), [OpenRouter API](https://openrouter.ai/docs/api/reference/overview). The supplied assignment PDF is assessment reference material, not portfolio content.
 
 All images and design work **© 2026 Jenna Slikkerveer**. Exported portfolio images and videos may be included in the repository. Licensed fonts and editable originals are not included; original design work and media may not be reused without permission. Keep an independent local backup of excluded originals and licensed files.

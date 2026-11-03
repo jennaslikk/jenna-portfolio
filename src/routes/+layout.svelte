@@ -34,7 +34,7 @@
 <!-- Studio uses the same navigation and copyright typography as the portfolio. -->
 <header id="top" class="portfolio">
  <a class="brand" href="/">Jenna Slikkerveer</a>
- {#if $page.url.pathname === '/studio' || $page.url.pathname.startsWith('/studio/')}
+ {#if $page.url.pathname !== '/studio/preview' && ($page.url.pathname === '/studio' || $page.url.pathname.startsWith('/studio/'))}
   <nav aria-label="Studio navigation">
    {#if $page.data.user}
     <!-- Keep sign-out a protected POST while presenting it as navigation text. -->
@@ -51,7 +51,7 @@
  {/if}
 </header>
 <div class="page-content"><slot/></div>
-<footer class="portfolio"><div class="footer-main">{#if $page.url.pathname.startsWith('/work') && ($page.url.pathname !== '/work' || $workHasMultipleRows)}<a href="#top" onclick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Back to top</a>{/if}</div><small>© 2026 Jenna Slikkerveer</small></footer>
+<footer class="portfolio"><div class="footer-main">{#if ($page.url.pathname === '/studio/preview' || $page.url.pathname.startsWith('/work')) && ($page.url.pathname !== '/work' || $workHasMultipleRows)}<a href="#top" onclick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Back to top</a>{/if}</div><small>© 2026 Jenna Slikkerveer</small></footer>
 
 <style>
  .studio-signout-form{
