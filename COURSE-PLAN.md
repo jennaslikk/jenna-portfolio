@@ -11,7 +11,7 @@ Source: [the supplied original brief](documents/individual-blog-project.pdf), re
 | 4. Search/filter/theme alternative | Category filter on Work | See VALIDATION.md |
 | 5. External API | Server-side Color API colour identification and palette | See VALIDATION.md |
 | 6. Sign in/out | Username/password, bcrypt and database sessions | See VALIDATION.md |
-| 7 PD. AI alternative | Automatic OpenRouter project summary, stored alongside the project | Real Gemini generation, Neon persistence and reload rendering passed; see VALIDATION.md |
+| 7 PD. AI alternative | Explicit OpenRouter draft generation in Studio, reviewed/edited before storing with the project | Real Gemini generation, Neon persistence and reload rendering passed; see VALIDATION.md |
 | 8 PD. SQL database | Neon PostgreSQL stores projects and comments | See VALIDATION.md |
 
 All Pass tasks and all PD extensions are required for PD. Implementation alone does not guarantee the grade: the presentation must demonstrate understanding, testing and responsible AI use.

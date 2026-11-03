@@ -31,7 +31,56 @@
  }
 </script>
 <a class="skip" href="#main">Skip to content</a>
-<!-- Keep the shared portfolio styling separate from the private course page. -->
-<header id="top" class:portfolio={!$page.url.pathname.startsWith('/studio')}><a class="brand" href="/">Jenna Slikkerveer</a><nav use:alignSidebar aria-label="Main navigation"><a href="/work" aria-current={$page.url.pathname.startsWith('/work')?'page':undefined}>Work</a><a href={`mailto:${site.email}`}>Contact</a></nav></header>
+<!-- Studio uses the same navigation and copyright typography as the portfolio. -->
+<header id="top" class="portfolio">
+ <a class="brand" href="/">Jenna Slikkerveer</a>
+ {#if $page.url.pathname === '/studio' || $page.url.pathname.startsWith('/studio/')}
+  <nav aria-label="Studio navigation">
+   {#if $page.data.user}
+    <!-- Keep sign-out a protected POST while presenting it as navigation text. -->
+    <form class="studio-signout-form" method="POST" action="/studio?/logout">
+     <button class="studio-signout" type="submit">Sign out</button>
+    </form>
+   {/if}
+  </nav>
+ {:else}
+  <nav use:alignSidebar aria-label="Main navigation">
+   <a href="/work" aria-current={$page.url.pathname.startsWith('/work') ? 'page' : undefined}>Work</a>
+   <a href={`mailto:${site.email}`}>Contact</a>
+  </nav>
+ {/if}
+</header>
 <div class="page-content"><slot/></div>
-<footer class:portfolio={!$page.url.pathname.startsWith('/studio')}><div class="footer-main">{#if $page.url.pathname.startsWith('/work') && ($page.url.pathname !== '/work' || $workHasMultipleRows)}<a href="#top" onclick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Back to top</a>{/if}</div><small>© 2026 Jenna Slikkerveer</small></footer>
+<footer class="portfolio"><div class="footer-main">{#if $page.url.pathname.startsWith('/work') && ($page.url.pathname !== '/work' || $workHasMultipleRows)}<a href="#top" onclick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Back to top</a>{/if}</div><small>© 2026 Jenna Slikkerveer</small></footer>
+
+<style>
+ .studio-signout-form{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:0;
+  margin-right:0;
+  margin-bottom:0;
+  margin-left:0;
+ }
+ .studio-signout{
+  background-color:transparent;
+  border-top-width:0;
+  border-right-width:0;
+  border-bottom-width:0;
+  border-left-width:0;
+  padding-top:0;
+  padding-right:0;
+  padding-bottom:0;
+  padding-left:0;
+  min-height:44px;
+  font-family:inherit;
+  font-size:inherit;
+  font-weight:inherit;
+  line-height:inherit;
+  letter-spacing:inherit;
+  text-transform:inherit;
+  color:inherit;
+  box-shadow:none;
+ }
+</style>

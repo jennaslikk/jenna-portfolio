@@ -153,55 +153,32 @@
   }
  }
 
- /* Move the sidebar below the introduction before its desktop gutters get tight.
-    Keep the portrait and introduction side by side until their existing breakpoint. */
+ /* Keep the desktop composition until tablet width. A minimum sidebar width
+    protects the button padding and unbroken service names while the copy scales. */
  @media(min-width:1001px) and (max-width:1439px){
-  .home-layout{display:flex;flex-direction:column;}
-  .home-layout .home-main{min-height:0;}
-  .home-layout .home-sidebar{
-   border-left-width:0;
-   border-top-width:var(--hairline);
-   border-top-style:solid;
-   border-top-color:var(--line);
+  :global(:root:has(.home-layout)){
+   --sidebar:max(220px,15.78125%);
+  }
+  .home-main .home-intro{max-width:92%;}
+  .home-layout .home-main .home-intro h2{
+   font-size:clamp(28px,2.34375vw,33.75px);
+   line-height:1.2;
+  }
+  .home-layout .home-main .home-intro p{
+   font-size:clamp(15px,1.25vw,18px);
+   line-height:1.3;
   }
   .home-layout .home-sidebar section{
-   width:86%;
-   margin-left:auto;
-   margin-right:auto;
-   padding-top:28px;
-   padding-right:0;
-   padding-bottom:28px;
-   padding-left:0;
+   padding-right:clamp(20px,2.96875vw,42.75px);
+   padding-left:clamp(20px,2.96875vw,42.75px);
   }
-  .home-sidebar-content{display:contents;}
-  .home-layout .home-sidebar section:first-child{
-   display:grid;
-   grid-template-columns:repeat(3,minmax(0,1fr));
-   column-gap:3%;
-   row-gap:20px;
-   align-items:start;
-  }
-  .home-sidebar .label{grid-column-start:1;grid-column-end:-1;}
-  .home-layout .home-sidebar .mini-project{
-   margin-top:0;
-   margin-right:0;
-   margin-bottom:0;
-   margin-left:0;
-  }
-  /* A content-sized button keeps equal internal padding without filling a column. */
   :global(body) .home-layout .home-sidebar .button{
-   grid-column-start:1;
-   grid-column-end:-1;
-   justify-self:start;
-   width:max-content;
-   margin-top:0;
-   margin-right:0;
-   margin-bottom:0;
-   margin-left:0;
-  }
-  .home-layout .home-sidebar section+section{
-   padding-top:12px;
-   padding-bottom:28px;
+   width:100%;
+   min-width:0;
+   padding-top:0.75em;
+   padding-right:1em;
+   padding-bottom:0.75em;
+   padding-left:1em;
   }
  }
 

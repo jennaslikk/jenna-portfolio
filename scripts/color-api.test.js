@@ -41,3 +41,19 @@ test('slow requests are aborted by the timeout', async () => {
  });
  await assert.rejects(getPalette('DEC1DA', stalled, 20));
 });
+
+test('all documented scheme choices are validated and forwarded without extra calls', async () => {
+ const { paletteModes } = await import('../src/lib/studio/palette-options.js');
+ for (const mode of paletteModes) {
+  let calls = 0;
+  await getPalette('DEC1DA', async url => {
+   calls += 1;
+   if (url.pathname === '/scheme') assert.equal(url.searchParams.get('mode'), mode.value);
+   return goodResponse(url.pathname === '/id' ? color : { colors: Array(5).fill(color) });
+  }, 8000, mode.value);
+  assert.equal(calls, 2);
+ }
+ let calls = 0;
+ await assert.rejects(getPalette('DEC1DA', async () => { calls += 1; }, 8000, 'invalid'));
+ assert.equal(calls, 0);
+});

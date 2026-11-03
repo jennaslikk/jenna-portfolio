@@ -13,8 +13,8 @@ export async function createProject(project, locals) {
    description, context, roles, tools, body, summary, display_order, content)
    SELECT ${slug}, ${project.title}, ${project.category}, ${project.type},
     ${project.year || null}, ${project.client || null}, ${project.description},
-    ${project.context || null}, ${project.roles}, ${project.tools}, ${project.body}, NULL,
-    COALESCE(MAX(display_order), 0) + 1, ${JSON.stringify({ cover: '', createdViaStudio: true })}::jsonb
+    ${project.context || null}, ${project.roles}, ${project.tools}, ${project.body}, ${project.summary || null},
+    COALESCE(MAX(display_order), 0) + 1, ${JSON.stringify({ cover: '', createdViaStudio: true, summaryStatus: project.summary ? 'reviewed' : 'not_requested' })}::jsonb
    FROM projects ON CONFLICT (slug) DO NOTHING RETURNING slug, title`;
   if (rows.length) return rows[0];
  }

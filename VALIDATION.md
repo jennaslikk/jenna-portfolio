@@ -105,3 +105,17 @@ Gemini configuration follow-up: the saved `OPENROUTER_MODEL` is now `google/gemi
 | Temporary records removed; original content preserved | PASS | The helper compared all original project rows unchanged and removed its temporary project/session. Read-only follow-up: five projects, one user, zero comments; zero matching temporary projects/accounts/comments. |
 
 The generated test summary was deliberately deleted with its temporary project after successful persistence checks. No real portfolio entry was changed. No design, key, commit, push or deployment changes were made. Stage 7 is complete for the tested local implementation; Stage 8 has not been started.
+
+
+## Explicit AI draft workflow update
+
+At Jenna's request, Studio now generates only when Generate AI Summary is clicked. The draft is editable and can be regenerated before publishing. Save project stores the final submitted text in the existing summary column and never calls OpenRouter. The schema and public layout were unchanged. Previous real-provider success above applies to the same OpenRouter helper; this updated interaction was tested without paid calls.
+
+Verified: 11 mocked unit tests passed; Svelte checks passed with zero errors/warnings; production build passed. The updated integration script verified authentication, invalid input, origin protection, explicit mocked drafts, edited-summary Neon persistence, optional empty summaries, reload rendering and original-record preservation. Browser tests exercised the real Studio actions with a local mock intercepting OpenRouter: loading, draft generation before other required fields are complete, regeneration, failed regeneration preserving edits, final edited-text save and no overflow at 390/768/1001/1920px. Temporary projects/sessions were removed. No real OpenRouter requests, portfolio design changes, commits, pushes or deployments were made for this update.
+
+
+## Studio creative-sidebar update
+
+Added the authenticated-only sticky tools sidebar, stacked below main content at 1000px and narrower. The existing palette integration now accepts a validated documented scheme mode; its enhanced form keeps results local to protect unsaved project drafts. Font pairings use a curated catalogue and explicit category-contrast rules, with Google Fonts CSS used only inside previews. No Developer API key or new environment setting is needed.
+
+Verification: 15 mocked unit tests passed (including allowed palette modes, pairing rules and existing AI helper checks); Svelte check passed with zero errors/warnings; build passed. An isolated browser preview blocked all SQL writes and paid AI calls, mocked only a test-session lookup, and allowed real read-only portfolio data. It verified layout/no overflow at 390/768/1000/1001/1280/1440/1920px, desktop sticky positioning, guest/action denial, three font pairs, category/family selection, refresh, font links, real Google font loading, interface-font isolation, one real complementary palette, six swatches, clipboard copy, invalid HEX, a mocked colour API outage, and unsaved project draft retention. Public Home/Work/Fruity Pigs pages remained tool-free and loaded successfully; Add Project validation retained entered summary text. Existing authentication code and permissions were unchanged. No real database records were created or modified, and no paid AI request, commit, push or deployment was made.

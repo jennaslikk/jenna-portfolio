@@ -1,26 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateSummary, DEFAULT_SUMMARY_MODEL } from '../src/lib/server/openrouter.js';
-import { completeProjectSummary } from '../src/lib/server/project-summary.js';
+import { generateProjectSummary } from '../src/lib/server/project-summary.js';
 
 const project = { description: 'An illustrated launch animation for a new sweet.', context: 'A playful character introduces the product through expressive movement.' };
 const summary = 'An illustrated launch animation introduces a new sweet through a playful character. Expressive movement brings the product presentation to life, combining a clear introduction with a light, engaging visual approach.';
 const response = content => ({ ok: true, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content } }] }) });
 const config = { apiKey: 'test-only-not-a-real-key' };
-
-function fakeDatabase() {
- let claimed = false;
- const saved = [];
- return { saved, connect: () => async (strings, ...values) => {
-  if (strings.join('').includes('RETURNING id')) {
-   if (claimed) return [];
-   claimed = true;
-   return [{ id: '1' }];
-  }
-  saved.push(values);
-  return [];
- } };
-}
 
 test('summary request limits cost and sends only description/context', async () => {
  let calls = 0;
@@ -59,24 +45,27 @@ test('HTTP failures, invalid JSON and unsafe/truncated output are rejected witho
 test('timeout aborts the request', async () => {
  await assert.rejects(generateSummary(project, { ...config, timeoutMs: 20, fetcher: (url, { signal }) => new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(Error('Aborted')), { once: true })) }));
 });
-test('authentication is checked before database or API access', async () => {
- await assert.rejects(completeProjectSummary({ locals: {}, connect: () => { throw Error('Must not connect'); } }), /Authentication required/);
-});
-test('atomic claim permits one request even with concurrent processing', async () => {
- const db = fakeDatabase();
+test('draft generation requires authentication and makes no database writes', async () => {
  let calls = 0;
- const options = { locals: { user: { id: '1' } }, slug: 'test', project, ...config, connect: db.connect, fetcher: async () => { calls += 1; return response(summary); } };
- const states = await Promise.all([completeProjectSummary(options), completeProjectSummary(options)]);
- assert.deepEqual(states.sort(), ['generated', 'skipped']);
- assert.equal(calls, 1);
- assert.equal(db.saved[0][0], summary);
- assert.equal(db.saved[0][1], 'generated');
+ const options = { ...config, fetcher: async () => { calls += 1; return response(summary); } };
+ await assert.rejects(generateProjectSummary(project, { ...options, locals: {} }), /Authentication required/);
+ assert.equal(calls, 0);
+ assert.equal(await generateProjectSummary(project, { ...options, locals: { user: { id: '1' } } }), summary);
+ assert.equal(await generateProjectSummary(project, { ...options, locals: { user: { id: '1' } } }), summary);
+ assert.equal(calls, 2, 'Each explicit generation is allowed, including regeneration');
 });
-test('unavailable service and missing key store honest status and no invented summary', async () => {
- for (const apiKey of ['', config.apiKey]) {
-  const db = fakeDatabase();
-  const status = await completeProjectSummary({ locals: { user: { id: '1' } }, slug: 'test', project, apiKey, connect: db.connect, fetcher: async () => { throw Error('Unavailable'); } });
-  assert.equal(status, apiKey ? 'failed' : 'not_configured');
-  assert.equal(db.saved[0][0], null);
- }
+
+test('reviewed summary validation preserves edits and rejects oversized/non-text input', async () => {
+ const { validateProject } = await import('../src/lib/server/project-input.js');
+ const input = new FormData();
+ input.set('summary', '  My reviewed wording.  ');
+ let checked = validateProject(input);
+ assert.equal(checked.project.summary, 'My reviewed wording.');
+ assert.equal(checked.errors.summary, undefined);
+ input.set('summary', 'x'.repeat(2001));
+ assert( validateProject(input).errors.summary );
+ input.set('summary', new Blob(['text']), 'draft.txt');
+ assert( validateProject(input).errors.summary );
+ input.delete('summary');
+ assert.equal(validateProject(input).project.summary, '');
 });

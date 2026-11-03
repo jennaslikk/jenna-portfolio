@@ -21,7 +21,7 @@ This is an outline and rehearsal guide. Create/export the actual concise slide d
 | 0:00–0:15 | Home and Work | “This portfolio presents my design work to potential clients and collaborators. My teacher approved projects instead of blog posts.” |
 | 0:15–0:30 | Filter Work, open a project, return | “The category filter is JavaScript in the browser. Project content comes from Neon.” |
 | 0:30–0:45 | Type `/studio`, sign in | “Course tools are unlinked and protected on the server.” |
-| 0:45–1:10 | Save the prepared project | “The server validates and saves it, then asks OpenRouter for a short summary.” Allow time for the request. |
+| 0:45–1:10 | Generate a draft, review it and save the prepared project | “Generate AI Summary asks OpenRouter for a draft. I can edit it before Save project stores the approved text in Neon.” Allow time for the request. |
 | 1:10–1:30 | Add a comment, refresh | “This is saved in PostgreSQL, so refreshing does not lose it.” |
 | 1:30–1:45 | Generate the colour palette | “This is a separate external API. It returns a name and colour scheme from a HEX value.” |
 | 1:45–2:00 | Show stored summary and sign out | “The summary is labelled AI-generated. Refresh reads the saved result. Signing out removes access to the tools.” |
@@ -109,7 +109,7 @@ Invite questions and stop teaching at minute eight.
 | What is in the session cookie? | A random token, not my password. The database stores a hash and an expiry. |
 | What prevents SQL injection? | Parameterised queries keep entered values separate from SQL commands. |
 | What if someone enters HTML? | We show escaped plain text; it does not run as HTML/JavaScript. |
-| What if an API fails? | The user sees an honest error. AI failure leaves the already-saved project intact. |
+| What if an API fails? | The user sees an honest error. AI generation failure keeps my form and previous draft; I can still save without a summary. |
 | Which API is AI? | OpenRouter generates text. The Color API returns colour information; it is not the AI feature. |
 | How did you choose the model? | A short summary needs a small output budget. I configured a low-cost text model and checked the real account/model before the live test. Do not invent a price or claim a model test that did not run. |
 | Can you explain `$state` and `$derived`? | State stores the selected category; a derived value calculates which projects match it. |

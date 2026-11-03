@@ -31,7 +31,7 @@ Comments refer to a project's database id. Studio retrieves comments for the sel
 
 The Color API is a normal external data API. The server sends a validated HEX code to `/id` and `/scheme`. It receives JSON, selects safe colour names/HEX values, and shows a seed colour plus five analogous colours. It requires no API key. Network failure gives an honest retry message.
 
-OpenRouter is the AI API. After a project is saved, the server sends only its description and context with a short instruction. The model returns a short plain-text summary. The server validates and stores it in `projects.summary`. The UI explicitly labels it AI-generated. Review it for accuracy. A missing key or failed request leaves the project intact and the summary unavailable; we do not invent a replacement.
+OpenRouter is the AI API. When you click Generate AI Summary in Studio, the server sends only the entered description and context with a short instruction. The model returns a short plain-text draft. You can edit or regenerate it before publishing. Save project stores the reviewed text in `projects.summary` without making another AI request. The UI explicitly labels it AI-generated. Review it for accuracy. A missing key or failed generation keeps your entered fields and previous draft; we do not invent a replacement.
 
 An atomic database claim prevents the same project from requesting a summary twice. Public views and refreshes read the stored result. New project submissions are separate requests and may cost credits, so keep the account private and use a provider spending limit.
 

@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { database } from '#lib/server/db';
-import { completeProjectSummary } from '#lib/server/project-summary';
+import { generateProjectSummary } from '#lib/server/project-summary';
+import { validPaletteMode } from '#lib/studio/palette-options';
 import { normaliseHex, getPalette } from '#lib/server/color-api';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
 import { studioComments, saveComment, validateComment, deleteComment } from '#lib/server/comments';
@@ -33,6 +33,31 @@ export async function load({ locals, url, cookies }) {
 }
 
 export const actions = {
+ generateSummary: async ({ locals, request, fetch }) => {
+  // Authenticate before reading drafts or making a potentially paid API request.
+  requireUser(locals);
+  if (Number(request.headers.get('content-length') || 0) > 131072) {
+   return fail(413, { summaryMessage: 'This submission is too large. Please shorten the project text.' });
+  }
+  let formData;
+  try { formData = await request.formData(); } catch {
+   return fail(400, { summaryMessage: 'Please use the Generate AI Summary button.' });
+  }
+  // Other project fields need not be complete to preview a summary.
+  const { values, errors } = validateProject(formData);
+  if (errors.description || errors.context) {
+   return fail(400, { values, errors: { description: errors.description, context: errors.context },
+    summaryMessage: 'Enter a description and check the context before generating a summary.' });
+  }
+  try {
+   const summary = await generateProjectSummary(values, { locals,
+    apiKey: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL, fetcher: fetch });
+   return { values: { ...values, summary }, summaryMessage: 'Summary generated. Review or edit it before saving the project.' };
+  } catch {
+   // Keep the previous draft and all entered fields when the provider fails.
+   return fail(502, { values, summaryMessage: 'The AI summary could not be generated. Please try again later, or check the OpenRouter model and credits. Your draft has been kept.' });
+  }
+ },
  generatePalette: async ({ locals, request, fetch }) => {
   // Check identity before parsing input or contacting the external service.
   requireUser(locals);
@@ -45,12 +70,14 @@ export const actions = {
   }
   const raw = input.get('hex');
   const hex = normaliseHex(raw);
+  const paletteMode = input.get('mode') ?? 'analogic';
+  if (!validPaletteMode(paletteMode)) return fail(400, { paletteMessage: 'Choose one of the available palette schemes.' });
   const paletteHex = typeof raw === 'string' ? raw.slice(0, 16) : '';
-  if (!hex) return fail(400, { paletteHex, paletteMessage: 'Enter 3 or 6 hexadecimal digits, with or without #.' });
+  if (!hex) return fail(400, { paletteHex, paletteMode, paletteMessage: 'Enter 3 or 6 hexadecimal digits, with or without #.' });
   try {
-   return { paletteHex: `#${hex}`, palette: await getPalette(hex, fetch) };
+   return { paletteHex: `#${hex}`, paletteMode, palette: await getPalette(hex, fetch, 8000, paletteMode) };
   } catch {
-   return fail(502, { paletteHex: `#${hex}`, paletteMessage: 'The colour service could not generate a palette. Please try again shortly.' });
+   return fail(502, { paletteHex: `#${hex}`, paletteMode, paletteMessage: 'The colour service could not generate a palette. Please try again shortly.' });
   }
  },
  deleteComment: async ({ locals, request, cookies }) => {
@@ -109,13 +136,7 @@ export const actions = {
   try { saved = await createProject(project, locals); } catch {
    return fail(503, { values, projectMessage: 'The project could not be saved. Please try again shortly.' });
   }
-  // A failed or unconfigured AI service must never lose an already-saved project.
-  try {
-   await completeProjectSummary({ locals, slug: saved.slug, project,
-    apiKey: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL,
-    connect: database, fetcher: fetch });
-  } catch { /* The studio shows an unavailable-summary notice; no automatic paid retry. */ }
-  // A GET after saving prevents refresh from submitting or generating again.
+  // Save only the reviewed text; publishing must never trigger a paid AI request.
   redirect(303, `/studio?created=${saved.slug}`);
  },
  login: async ({ request, cookies, locals, getClientAddress }) => {

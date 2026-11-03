@@ -1,3 +1,5 @@
+import { validPaletteMode } from '../studio/palette-options.js';
+
 export function normaliseHex(value) {
  if (typeof value !== 'string') return null;
  const hex = value.trim().replace(/^#/, '');
@@ -12,8 +14,9 @@ function readColor(value) {
  return { hex: value.hex.value.toUpperCase(), name: value.name.value.trim() };
 }
 
-export async function getPalette(hex, fetcher = fetch, timeoutMs = 8000) {
+export async function getPalette(hex, fetcher = fetch, timeoutMs = 8000, mode = 'analogic') {
  const clean = normaliseHex(hex);
+ if (!validPaletteMode(mode)) throw new Error('Invalid palette mode');
  if (!clean) throw new Error('Invalid HEX colour');
  const controller = new AbortController();
  const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -26,7 +29,7 @@ export async function getPalette(hex, fetcher = fetch, timeoutMs = 8000) {
   return response.json();
  }
  try {
-  const [color, scheme] = await Promise.all([request('/id', {}), request('/scheme', { mode: 'analogic', count: '5' })]);
+  const [color, scheme] = await Promise.all([request('/id', {}), request('/scheme', { mode, count: '5' })]);
   if (!Array.isArray(scheme.colors) || scheme.colors.length !== 5) throw new Error('Invalid palette response');
   return { seed: readColor(color), colors: scheme.colors.map(readColor) };
  } finally {

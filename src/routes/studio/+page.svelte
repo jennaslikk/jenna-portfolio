@@ -1,6 +1,8 @@
 <script>
  import { enhance } from '$app/forms';
  let savingProject = $state(false);
+ let generatingSummary = $state(false);
+ import FontPairingTool from '#lib/components/FontPairingTool.svelte';
  import PaletteTool from '#lib/components/PaletteTool.svelte';
  import { projectCategories, projectTypes, projectFields } from '#lib/project-form';
  let { data, form } = $props();
@@ -11,15 +13,12 @@
  <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<main id="main" class="studio fade">
+<main id="main" class="studio fade" class:workspace={!!data.user}>
  <section class="studio-panel" aria-labelledby="studio-title">
   <h1 id="studio-title">Studio</h1>
   {#if data.user}
    <p>Signed in as {data.user.username}</p>
    {#if form?.message}<p class="message" role="alert">{form.message}</p>{/if}
-   <form method="POST" action="?/logout">
-    <button class="button" type="submit">Sign out</button>
-   </form>
    <section class="add-project" aria-labelledby="add-project-title">
     <h2 id="add-project-title">Add a project</h2>
     <p class="hint">Saving publishes the project on Work. New projects start with an empty artwork placeholder.</p>
@@ -32,14 +31,20 @@
        <p class="hint">Review this AI-generated text for accuracy.</p>
       </section>
      {:else}
-      <p class="hint" role="status">{data.createdProject.summaryStatus === 'not_configured' ? 'Your project is saved. AI summary generation is not configured yet.' : 'Your project is saved, but its AI summary is unavailable. No automatic retry will be made.'}</p>
+      <p class="hint" role="status">Your project is saved without an AI summary.</p>
      {/if}
     {/if}
-    <form method="POST" action="?/createProject" use:enhance={({ cancel }) => {
-     if (savingProject) { cancel(); return; }
-     savingProject = true;
+    <form method="POST" action="?/createProject" use:enhance={({ cancel, action }) => {
+     if (savingProject || generatingSummary) { cancel(); return; }
+     const generating = action.search === '?/generateSummary';
+     generatingSummary = generating;
+     savingProject = !generating;
      return async ({ update }) => {
-      try { await update(); } finally { savingProject = false; }
+      // Draft generation keeps the current form; publishing resets it after success.
+      try { await update({ reset: !generating }); } finally {
+       savingProject = false;
+       generatingSummary = false;
+      }
      };
     }}>
      {#if form?.projectMessage}<p class="message" role="alert">{form.projectMessage}</p>{/if}
@@ -54,6 +59,20 @@
        {#if field.hint}<p class="hint" id={`${field.name}-hint`}>{field.hint}</p>{/if}
        {#if form?.errors?.[field.name]}<p class="field-error" id={`${field.name}-error`}>{form.errors[field.name]}</p>{/if}
       </div>
+      {#if field.name === 'context'}
+       <div class="field ai-summary" aria-busy={generatingSummary}>
+        <button class="button" type="submit" formaction="?/generateSummary" formnovalidate disabled={savingProject || generatingSummary}>
+         {generatingSummary ? 'Generating AI summary…' : 'Generate AI Summary'}
+        </button>
+        <p class="hint">Generate an optional draft from your description and context. Review, edit, or generate again before saving.</p>
+        {#if generatingSummary}<p class="hint" role="status">Generating your summary…</p>{/if}
+        {#if form?.summaryMessage}<p class="hint" role="status">{form.summaryMessage}</p>{/if}
+        <label class="label" for="project-summary">AI summary — editable</label>
+        <textarea id="project-summary" name="summary" rows="5" maxlength="2000" value={form?.values?.summary || ''} readonly={generatingSummary} aria-invalid={form?.errors?.summary ? 'true' : undefined} aria-describedby="summary-hint"></textarea>
+        <p class="hint" id="summary-hint">The text in this field is saved with your project. Saving does not generate a summary.</p>
+        {#if form?.errors?.summary}<p class="field-error">{form.errors.summary}</p>{/if}
+       </div>
+      {/if}
       {#if field.name === 'title'}
        <fieldset class="field categories" aria-describedby={form?.errors?.category ? 'category-error' : 'category-hint'}>
         <legend class="label">Category *</legend>
@@ -75,7 +94,7 @@
        </div>
       {/if}
      {/each}
-     <button class="button" type="submit" disabled={savingProject}>{savingProject ? 'Saving project and summary…' : 'Save project'}</button>
+     <button class="button" type="submit" disabled={savingProject || generatingSummary}>{savingProject ? 'Saving project…' : 'Save project'}</button>
     </form>
    </section>
    <section class="comments-section" id="comments" aria-labelledby="comments-title">
@@ -135,7 +154,6 @@
      </div>
     {/if}
    </section>
-   <PaletteTool result={form} />
   {:else}
    <form method="POST" action="?/login">
     <div class="field">
@@ -151,16 +169,127 @@
    </form>
   {/if}
  </section>
+ {#if data.user}
+  <aside class="studio-sidebar" aria-label="Creative tools">
+   <div class="studio-tools">
+    <PaletteTool result={form} />
+    <FontPairingTool />
+   </div>
+  </aside>
+ {/if}
 </main>
 
 <style>
+ /* Use the homepage's responsive type scale while keeping form hints secondary. */
+ .studio {
+  --studio-caption-size:15px;
+  --studio-button-size:13px;
+  --studio-label-size:14px;
+  --studio-label-line:1.25;
+  --studio-heading-size:clamp(28px,4vw,36px);
+  font-family:var(--sans);
+  font-size:clamp(16px,2.1vw,18px);
+  font-weight:400;
+  line-height:1.4;
+ }
+ .studio :global(p){line-height:1.3;}
+ .studio :global(h2){font-size:var(--studio-heading-size);line-height:1.2;}
+ .studio :global(.label){font-size:var(--studio-label-size);line-height:var(--studio-label-line);}
+ .studio :global(.button){font-family:var(--sans);font-size:var(--studio-button-size);line-height:1.2;}
+ @media(min-width:1001px){
+  .studio {
+   --studio-caption-size:max(14px,18rem);
+   --studio-button-size:16rem;
+   --studio-label-size:20rem;
+   --studio-label-line:1.25;
+   --studio-heading-size:45rem;
+   font-size:24rem;
+   line-height:1.3;
+  }
+ }
+ @media(min-width:1001px) and (max-width:1439px){
+  .studio {
+   --studio-button-size:calc(13px - (100vw - 1000px) * 1 / 440);
+   --studio-label-size:calc(14px + (100vw - 1000px) * 1 / 440);
+   --studio-heading-size:clamp(28px,2.34375vw,33.75px);
+   font-size:clamp(15px,1.25vw,18px);
+  }
+  .studio h1{
+   font-size:calc(52px + (100vw - 1000px) * 4.25 / 440);
+   line-height:calc(62.4px + (100vw - 1000px) * 5.1 / 440);
+  }
+ }
+ @media(max-width:700px){
+  .studio {
+   --studio-caption-size:14px;
+   --studio-button-size:calc(10px + 1pt);
+   --studio-label-size:15px;
+   --studio-heading-size:clamp(26px,6.6vw,32px);
+   font-size:calc(15px + 1pt);
+   line-height:1.3;
+  }
+ }
  .studio { flex-grow: 1; display: grid; align-items: center; justify-items: center; padding-top: 64px; padding-right: 7%; padding-bottom: 100px; padding-left: 7%; }
+ /* The tools have their own scroll area so both remain reachable in a short window. */
+ .studio.workspace{
+  grid-template-columns:minmax(0,1fr) clamp(320px,30vw,480px);
+  align-items:start;
+  padding-top:0;
+  padding-right:0;
+  padding-bottom:0;
+  padding-left:0;
+ }
+ .workspace .studio-panel{
+  width:calc(100% - 64px);
+  margin-top:64px;
+  margin-bottom:100px;
+ }
+ .studio-sidebar{
+  align-self:stretch;
+  min-width:0;
+  width:100%;
+  border-left-width:var(--hairline);
+  border-left-style:solid;
+  border-left-color:var(--line);
+  background-color:#fff;
+ }
+ .studio-tools{
+  position:sticky;
+  top:var(--header);
+  max-height:calc(100dvh - var(--header));
+  overflow-y:auto;
+  padding-top:40px;
+  padding-right:28px;
+  padding-bottom:40px;
+  padding-left:28px;
+  scrollbar-width:thin;
+ }
+ @media(max-width:1000px){
+  .studio.workspace{display:block;}
+  .workspace .studio-panel{width:86%;margin-top:40px;margin-right:auto;margin-bottom:64px;margin-left:auto;}
+  .studio-sidebar{border-left-width:0;border-top-width:var(--hairline);border-top-style:solid;border-top-color:var(--line);}
+  .studio-tools{position:static;max-height:none;overflow-y:visible;padding-top:32px;padding-right:7%;padding-bottom:48px;padding-left:7%;}
+ }
  .studio-panel { width: 100%; max-width: 440px; }
  h1 { margin-bottom: 32px; }
  p { margin-bottom: 24px; }
  form { display: flex; flex-direction: column; align-items: flex-start; row-gap: 24px; }
+ .ai-summary .button { align-self: flex-start; }
  .field { width: 100%; display: flex; flex-direction: column; row-gap: 10px; }
- input, select, textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding-top: 12px; padding-right: 14px; padding-bottom: 12px; padding-left: 14px; border-top-width: var(--hairline); border-right-width: var(--hairline); border-bottom-width: var(--hairline); border-left-width: var(--hairline); border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: var(--line); border-right-color: var(--line); border-bottom-color: var(--line); border-left-color: var(--line); border-top-left-radius: 0; border-top-right-radius: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; background-color: white; color: var(--ink); font-family: var(--sans); font-size: 18px; }
+ input, select, textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding-top: 12px; padding-right: 14px; padding-bottom: 12px; padding-left: 14px; border-top-width: var(--hairline); border-right-width: var(--hairline); border-bottom-width: var(--hairline); border-left-width: var(--hairline); border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: var(--line); border-right-color: var(--line); border-bottom-color: var(--line); border-left-color: var(--line); border-top-left-radius: 0; border-top-right-radius: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; background-color: white; color: var(--ink); font-family: var(--sans); font-size: inherit; font-weight: 400; line-height: 1.3; }
+ /* Browser autofill paints over background-color; cover its tint inside the fields. */
+ #username:autofill,
+ #password:autofill{
+  box-shadow:inset 0 0 0 1000px #fff;
+  color:var(--ink);
+  caret-color:var(--ink);
+ }
+ #username:-webkit-autofill,
+ #password:-webkit-autofill{
+  box-shadow:inset 0 0 0 1000px #fff;
+  -webkit-text-fill-color:var(--ink);
+  caret-color:var(--ink);
+ }
  .categories { min-width: 0; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; }
  .categories legend { margin-bottom: 10px; }
  .category-option { display: flex; align-items: center; column-gap: 12px; min-height: 44px; cursor: pointer; }
@@ -168,10 +297,10 @@
  .message { margin-bottom: 0; }
  .add-project, .comments-section { margin-top: 40px; padding-top: 32px; border-top-width: var(--hairline); border-top-style: solid; border-top-color: var(--line); }
  .add-project h2, .comments-section h2 { margin-bottom: 20px; }
- .hint { margin-bottom: 0; font-size: 15px; line-height: 1.4; }
+ .hint { margin-bottom: 0; font-size: var(--studio-caption-size); line-height: 1.4; }
  .add-project > .hint { margin-bottom: 24px; }
- textarea { resize: vertical; line-height: 1.5; }
- .field-error { margin-bottom: 0; font-size: 15px; }
+ textarea { resize: vertical; line-height: 1.3; }
+ .field-error { margin-bottom: 0; font-size: var(--studio-caption-size); }
  [aria-invalid="true"] { border-top-color: var(--ink); border-right-color: var(--ink); border-bottom-color: var(--ink); border-left-color: var(--ink); background-color: var(--pink); }
  .success { padding-top: 16px; padding-right: 16px; padding-bottom: 16px; padding-left: 16px; background-color: var(--pink); }
  .studio-summary { margin-bottom: 24px; }
@@ -181,8 +310,8 @@
  .comment-list { margin-top: 32px; }
  .comment { padding-top: 24px; padding-bottom: 24px; border-top-width: var(--hairline); border-top-style: solid; border-top-color: var(--line); }
  .comment h3 { margin-top: 0; margin-bottom: 8px; }
- .comment time { display: block; font-size: 14px; margin-bottom: 12px; }
- .comment-project { font-size: 15px; margin-bottom: 12px; overflow-wrap: anywhere; }
+ .comment time { display: block; font-size: var(--studio-caption-size); margin-bottom: 12px; }
+ .comment-project { font-size: var(--studio-caption-size); margin-bottom: 12px; overflow-wrap: anywhere; }
  .delete-comment { margin-top: 16px; }
  .comment-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 0; }
  .success a { text-decoration-line: underline; }

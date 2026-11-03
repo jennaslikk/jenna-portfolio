@@ -10,6 +10,11 @@ export function validateProject(formData) {
   else if (field.required && !values[field.name]) errors[field.name] = `${field.label} is required.`;
   else if (values[field.name].length > field.max) errors[field.name] = `Use no more than ${field.max} characters.`;
  }
+ // Preserve the reviewed draft on validation errors and store it as plain text.
+ const summary = formData.get('summary');
+ values.summary = typeof summary === 'string' ? summary.trim() : '';
+ if (summary !== null && typeof summary !== 'string') errors.summary = 'Please enter plain text for the summary.';
+ else if (values.summary.length > 2000) errors.summary = 'Use no more than 2000 characters for the summary.';
  // Repeated checkbox fields become one validated, deduplicated category list.
  values.category = [...new Set(formData.getAll('category'))];
  if (!values.category.length || values.category.some(value => !projectCategories.includes(value))) {

@@ -2,6 +2,7 @@ import './load-private-env.js';
 import assert from 'node:assert/strict';
 import { randomBytes, createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
+import { parse } from 'devalue';
 import { hasOpenRouterKey } from '../src/lib/server/openrouter.js';
 
 // A real request can spend credits. Require an explicit flag and a local preview.
@@ -25,10 +26,18 @@ try {
  phase = 'one authenticated create action';
  const values = {
   title, category: 'AI Creative', type: 'landscape', year: '2026', client: 'Course verification',
-  description: 'A temporary demonstration project verifies authenticated portfolio publishing and automatic text summaries.',
+  description: 'A temporary demonstration project verifies authenticated portfolio publishing and reviewed AI text summaries.',
   context: 'Created only for an approved course verification test. It makes no claims about client work or design outcomes.',
   roles: 'Verification', tools: 'SvelteKit', body: 'Temporary verification content; this record is removed after the test.'
  };
+ // Only the explicit draft action contacts OpenRouter; saving never generates.
+ const generated = await fetch(origin + '/studio?/generateSummary', {
+  method: 'POST', body: new URLSearchParams(values),
+  headers: { origin, accept: 'application/json', 'x-sveltekit-action': 'true', cookie }
+ });
+ const result = await generated.json();
+ assert.equal(result.type, 'success', 'The explicit generation action did not succeed.');
+ values.summary = parse(result.data).values.summary;
  // Exactly one publishing POST: never automatically retry a possibly paid request.
  const saved = await fetch(origin + '/studio?/createProject', {
   method: 'POST', redirect: 'manual', body: new URLSearchParams(values),
@@ -38,7 +47,7 @@ try {
  phase = 'real generation and Neon persistence';
  const rows = await sql`SELECT slug, summary, content FROM projects WHERE title = ${title}`;
  assert.equal(rows.length, 1);
- assert.equal(rows[0].content.summaryStatus, 'generated', 'A live summary was not generated. Check private configuration, model availability and provider credits before approving another attempt.');
+ assert.equal(rows[0].content.summaryStatus, 'reviewed', 'A live summary was not generated. Check private configuration, model availability and provider credits before approving another attempt.');
  assert.equal(typeof rows[0].summary, 'string');
  assert(rows[0].summary.length >= 20);
  phase = 'studio and public rendering';

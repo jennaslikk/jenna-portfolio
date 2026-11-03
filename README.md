@@ -25,8 +25,8 @@ The brief requires a public repository with meaningful commit history, a README 
 | Username/password sign-in and sign-out | Unlinked `/studio`; no public registration. |
 | Protected project publishing | A signed-in studio form validates input, makes a unique slug and saves a project in Neon. New projects use artwork placeholders. |
 | Database comments | Studio selects a project, adds comments, lists newest first and allows signed-in deletion. |
-| External API | Studio calls The Color API on the server for a colour name and five-colour analogous palette. |
-| AI summaries | After saving a project, the server attempts one OpenRouter summary, stores it and displays it in studio and the public project sidebar. A working private key is required. |
+| External API | Studio calls The Color API on the server for a colour name and five-colour palette, with analogous, complementary, triadic, tetradic and monochrome scheme options. |
+| AI summaries | In Studio, click Generate AI Summary below description/context, review or edit the draft, then save. Only that button calls OpenRouter; Save project stores the final text in Neon and displays it in Studio and the project sidebar. A working private key is required for generation. |
 | SQL persistence | `projects`, `comments`, `users`, `sessions` and `login_attempts` tables in Neon. |
 
 See VALIDATION.md for the distinction between implemented code, mocked tests, live tests and items still awaiting verification.
@@ -36,7 +36,7 @@ See VALIDATION.md for the distinction between implemented code, mocked tests, li
 - No public sign-up, public comments, password reset, account-management screen or media-upload service.
 - No separate Contact page: the navigation opens an email draft.
 - No rich-text/HTML editor: project body and comments are rendered as escaped plain text.
-- No automatic AI regeneration, bulk processing or retry. A failed AI call does not lose the project.
+- No automatic AI generation on saving, bulk processing or retry. Explicit regeneration is available before publishing. A failed AI call keeps the entered fields and previous draft.
 - No search or theme switcher: the category filter satisfies the JavaScript alternative.
 - No weather widget: The Color API satisfies the external-API requirement.
 - Unreleased work stays a generic placeholder and is excluded from seeds and publishing.
@@ -95,7 +95,7 @@ See VALIDATION.md for the distinction between implemented code, mocked tests, li
 
    Open the printed **localhost** address. Type `/studio` manually. Secure cookies work on localhost and HTTPS; do not use a plain-HTTP LAN IP for sign-in. Keep the terminal running. Restart after changing private configuration.
 
-7. In studio: sign in, create a project, inspect its saved summary, add a comment, generate a palette, then sign out. Publishing a project makes it visible on Work immediately.
+7. In studio: sign in, enter a project description/context, click Generate AI Summary, review/edit the draft, save the project, add a comment, generate a palette, then sign out. Publishing a project makes it visible on Work immediately.
 
 ## Checks and repeatable tests
 
@@ -118,7 +118,7 @@ PALETTE_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-palette.js
 
 These integration tests use the configured **real Neon database** and require permission to create temporary records. They clean up only their generated fixtures; authentication also updates the normal login counters. Prefer an isolated test branch and avoid running tests while editing content. They are not read-only commands. The comments/summary/palette scripts need an existing administrator. The palette test contacts the real Color API; summary tests mock AI and incur no model charges.
 
-`PROJECT_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-add-project.js` verifies real publishing and unique slugs, but deliberately refuses to run with a real OpenRouter key because it creates multiple projects. Do not remove that guard. A real AI test is separate: create one intended project after configuring the key, inspect the stored summary and provider activity, and refresh without resubmitting. Each new submitted project can incur a new model request.
+`PROJECT_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-add-project.js` verifies publishing and unique slugs. It does not submit the generation action; saving alone never calls OpenRouter. The summary workflow test mocks draft generation and checks that edited text survives a real Neon save and page reload. A real AI test remains separate and requires explicit approval. Each click of Generate AI Summary, including regeneration, can incur a provider charge.
 
 For an explicitly approved, automated **one-request live AI test**, restart the preview after configuring the key and run:
 
@@ -126,7 +126,7 @@ For an explicitly approved, automated **one-request live AI test**, restart the 
 LIVE_SUMMARY_TEST_ORIGIN=http://127.0.0.1:4173 node scripts/test-live-summary.js --live
 ```
 
-This creates one temporary project through the authenticated action, checks the real saved summary and rendering, then removes only its temporary project/session. It can spend provider credits and never retries automatically. Do not run it merely to check whether a key exists.
+This explicitly generates one draft, saves it as a temporary project through the authenticated action, checks the saved summary and rendering, then removes only its temporary project/session. It can spend provider credits and never retries automatically. Do not run it merely to check whether a key exists.
 
 Also inspect `/work` filters, mobile project-details controls, keyboard focus, media playback, the palette copy button and 404 behaviour. Test 390px, 768px, 1000px, 1001px, 1440px and 1920px widths. Passing automated tests does not replace rehearsing the actual demonstration.
 
@@ -165,6 +165,16 @@ The planned target is Vercel using the **complete local project**. Before that d
 
 A GitHub-only build will not contain the excluded PP Editorial New fonts. Do not change the typography to compensate; supply licensed webfonts through the approved local workflow. Database contents are not included in a Git clone, so reviewers need their own Neon setup or an explicitly arranged demonstration.
 
+## Studio creative workspace
+
+For signed-in users, the existing Add Project and Comments forms stay in the main column. A thin divider separates a sticky right tools sidebar on desktop; at 1000px and below the tools stack underneath. The sidebar can scroll independently in short desktop windows.
+
+- **Colour palette:** reuses the existing protected Color API action and `/id` + `/scheme` helper. `src/lib/studio/palette-options.js` lists the allowed schemes, validated before any request. Palette results stay inside their component so exploring colours does not reset an unsaved project or summary draft.
+- **Font pairing:** `src/lib/components/FontPairingTool.svelte` uses the curated list and rules in `src/lib/studio/font-pairings.js`. Serif headlines pair with sans-serif body text; sans-serif headlines pair with serif body text; display headlines pair with restrained sans-serif body text. Choose a headline family or explore a category, then refresh to rotate three suggestions. These are rule-based starting points, not AI output.
+- **No Google API key or new environment variable is required.** The full Google Fonts Developer API is unnecessary for this small catalogue. The component loads only its preview fonts through Google's key-free CSS API; Futura PT and PP Editorial New continue to style the interface. Google font stylesheets are mounted only with the authenticated Studio tools, not on public pages. Font previews require internet access and fall back to local generic fonts offline. No OpenRouter request is made for font pairings.
+
+Google references: [CSS API](https://developers.google.com/fonts/docs/css2), [Developer API metadata and key requirements](https://developers.google.com/fonts/docs/developer_api). The catalogue is intentionally curated rather than a live search of every Google font.
+
 ## Removing course features later
 
 Do not delete all of `src/lib/server/`: public portfolio loaders still use `db.js` and `projects.js`.
@@ -173,7 +183,7 @@ To keep the database-backed portfolio and remove only course tools:
 
 - Remove `src/routes/studio/` and `src/hooks.server.js` (or just its studio-specific handling).
 - Remove `src/lib/server/auth.js`, `passwords.js`, `create-project.js`, `project-input.js`, `comments.js`, `color-api.js`, `openrouter.js`, `project-summary.js`.
-- Remove `src/lib/components/PaletteTool.svelte`, `src/lib/project-form.js`, account/setup-auth scripts and the feature-specific test scripts. Keep `scripts/setup-database.js` and any environment helper still used by remaining scripts.
+- Remove `src/lib/components/PaletteTool.svelte`, `src/lib/components/FontPairingTool.svelte`, `src/lib/studio/`, `src/lib/project-form.js`, account/setup-auth scripts and the feature-specific test scripts. Keep `scripts/setup-database.js` and any environment helper still used by remaining scripts.
 - Remove the studio-only imports and course settings in shared files, the `test:auth`, `create-user` and `db:auth` npm commands, and `bcryptjs` if no longer used.
 - Remove OpenRouter environment settings and, if desired, the explicitly labelled AI sidebar display. Stored summaries can remain as project data.
 - Tables for users, sessions, login attempts and comments can remain unused. Do not drop tables or delete stored content without a separate decision and backup.
