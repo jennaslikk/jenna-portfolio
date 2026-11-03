@@ -104,7 +104,7 @@
  .work-sidebar { display: block; }
  .work-sidebar .work-filters { position: sticky; top: var(--header); max-height: calc(100dvh - var(--header)); overflow-y: auto; }
  .filter-list { display: flex; flex-direction: column; align-items: flex-start; margin-top: 0; gap: 12px; }
- .filter-list button { display: block; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--ink); font-family: 'futura-pt', Futura, sans-serif; font-size: 16px; line-height: 1.3; font-weight: 400; text-transform: none; white-space: normal; text-align: left; }
+ .filter-list button { display: block; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--ink); font-family: 'futura-pt', Futura, sans-serif; font-size: 16px; line-height: 1.3; font-weight: 400; text-transform: none; white-space: nowrap; text-align: left; }
  .filter-list button.active { font-family: 'futura-pt-bold', var(--sans); font-weight: 700; }
  .empty-state { grid-column: 1 / -1; }
  @media(min-width:1001px) {
@@ -126,8 +126,17 @@
   .work-sidebar .work-filters { padding: 28px 7% 0; }
   .work-main { padding-top: 20px; }
   .project-grid { display: block; width: 86%; }
-  .single-result .project-card { width: 100%; }
+  .project-grid .project-card { width: 100%; }
+  /* 9/16 of the content width equals a full-width landscape preview's height. */
+  .project-grid .project-card.portrait-card {
+   width:56.25%;
+   margin-left:0;
+   margin-right:auto;
+   text-align:left;
+  }
   .pattern-staggered { margin-top: 0; }
   .project-card :global(.media) { max-height: none; }
+  .project-card :global(.media img),
+  .project-card :global(.media video) { object-fit:contain; }
  }
 </style>

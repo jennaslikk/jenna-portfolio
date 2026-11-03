@@ -37,20 +37,6 @@
  }
 
  onMount(() => {
-  const navigation = document.querySelector('header nav');
-  const projectPage = projectContent?.closest('.project-page');
-  const alignSidebar = () => {
-   const firstLink = navigation?.querySelector('a');
-   if (!navigation || !firstLink || !projectPage) return;
-   const inset = firstLink.getBoundingClientRect().left - navigation.getBoundingClientRect().left;
-   projectPage.style.setProperty('--project-sidebar-inset', `${inset}px`);
-  };
-  const navigationObserver = new ResizeObserver(alignSidebar);
-  if (navigation) {
-   navigationObserver.observe(navigation);
-   for (const link of navigation.querySelectorAll('a')) navigationObserver.observe(link);
-  }
-  alignSidebar();
   const mobile = window.matchMedia('(max-width: 700px)');
   const syncDetails = () => { detailsOpen = !mobile.matches; };
   syncDetails();
@@ -72,7 +58,6 @@
    }
   }
   return () => {
-   navigationObserver.disconnect();
    mobile.removeEventListener('change', syncDetails);
    observer?.disconnect();
   };
@@ -126,7 +111,12 @@
  }
  @media (max-width: 700px) {
   .audio-player { width: 100%; }
+  .project-section>.label { margin-bottom:24px; }
  }
+ /* Supporting paragraphs follow their headings directly at every screen size.
+    Headings before images retain their existing gallery spacing. */
+ .project-section>.label:has(+p){margin-bottom:0;}
+ .project-section>.label+p{margin-top:0;}
  .project-body { white-space: pre-line; margin-top: 24px; }
  .hero-video.work-card-size { width: calc((85% - 162rem) * 872 / 1274 + 81rem); margin-inline: auto; }
  .hero-video.work-card-size.portrait-size { width: calc((85% - 162rem) * 402 / 1274); }
@@ -135,7 +125,9 @@
   .hero-video.work-card-size.portrait-size { width: calc((85% - 50px) * 402 / 1274); }
  }
  @media(max-width:700px) {
-  .hero-video.work-card-size, .hero-video.work-card-size.portrait-size { width: 86%; }
+  .hero-video.work-card-size { width:86%; }
+  /* Match Work: portrait width equals a full-width landscape preview's height. */
+  .hero-video.work-card-size.portrait-size { width:calc(86% * 9 / 16); }
  }
  .project-main .page-title.product-title { padding-top: 54px; padding-bottom: 54px; }
  @media(max-width:700px) {
