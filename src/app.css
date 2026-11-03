@@ -200,9 +200,9 @@ figcaption{font-size:24rem;margin-top:16rem;}
 
 .project-page #storyboard .media{border:0;}
 
-/* Keep Work navigation, sidebar and footer dividers on the same track. */
+/* Keep navigation and footer dividers aligned, including the narrow Studio footer. */
 @media(min-width:701px) and (max-width:1000px){
- body:has(.work-layout),body:has(.project-page){--sidebar:max(23%,210px);}
+ body:has(.work-layout),body:has(.project-page),body:has(.studio){--sidebar:max(23%,210px);}
 }
 
 /* Let gradient panels fill the remaining page height down to the footer. */
