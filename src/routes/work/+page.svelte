@@ -98,8 +98,9 @@
  /* Size every card by format, including projects added after the original five. */
  .project-card:not(.portrait-card) { grid-column-end: span 2; }
  .portrait-card { grid-column-start: 3; grid-column-end: 4; }
- .motion-grid .card-2 { grid-row: 1; }
- .motion-grid .card-4 { grid-row: 1; }
+ .motion-grid .card-1 { grid-column-start:1; grid-row-start:1; }
+ .motion-grid .card-2 { grid-column-start:3; grid-column-end:4; grid-row-start:1; }
+ .motion-grid .card-4 { grid-column-start:2; grid-column-end:4; grid-row-start:2; }
  /* A filtered card keeps its original grid width, independent of result order. */
  .single-result .project-card { grid-column: 1 / -1; justify-self: center; width: calc((100% - 2 * var(--column-gap)) * 872 / 1274 + var(--column-gap)); margin-top: 0; }
  .single-result .portrait-card { width: calc((100% - 2 * var(--column-gap)) * 402 / 1274); }
