@@ -399,3 +399,90 @@ To remove the palette feature, remove its studio component/import and server
 `generatePalette` action, `src/lib/components/PaletteTool.svelte`,
 `src/lib/server/color-api.js`, `scripts/color-api.test.js` and
 `scripts/test-palette.js`. No public portfolio code depends on it.
+
+
+## Stage 7: AI-generated project summaries
+
+New projects created through the signed-in studio workflow now attempt one short
+OpenRouter summary after the project is safely stored. Only description and
+context are sent to the model. Existing projects are not regenerated or changed.
+The result is stored in `projects.summary`, shown in the studio's saved-project
+confirmation and in the public project sidebar under Summary (AI-generated).
+Review the generated text for accuracy. The AI output is displayed as escaped
+plain text, never HTML.
+
+### Secure OpenRouter setup
+
+1. Create an account at https://openrouter.ai and create a key at
+   https://openrouter.ai/settings/keys. Give it a small spending limit and add
+   credits if your account requires them.
+2. In VS Code, create/open the project-root `.env` privately. Keep existing Neon
+   settings in `.env.local` unchanged. Add:
+
+   ```dotenv
+   OPENROUTER_API_KEY="paste-your-key-here"
+   OPENROUTER_MODEL="google/gemini-2.5-flash-lite"
+   ```
+
+3. Replace only the key placeholder in your local file. Do not paste the key in
+   chat, terminal commands, screenshots or source code. Never prefix it PUBLIC_.
+4. Restart the local server so SvelteKit loads the private variables. `.env` and
+   `.env.local` are ignored by Git and excluded from Vercel uploads. Only the
+   placeholder `.env.example` belongs in the repository.
+
+`google/gemini-2.5-flash-lite` is the default low-cost model. On 2 November 2026,
+OpenRouter lists $0.10 per million input tokens and $0.40 per million output tokens;
+check current pricing at https://openrouter.ai/google/gemini-2.5-flash-lite before
+changing models. A response is capped at 160 tokens. No SDK/dependency or new
+schema is required. The API call uses the existing server-side fetch.
+
+### Request and cost control
+
+- Authentication and project validation happen before saving or AI processing.
+- The validated project is saved first. Slug collision retries do not call AI.
+- The database atomically marks generation as started before making the request.
+  A second processor cannot generate again for the same project. A successful
+  result is stored using parameterised SQL.
+- The request uses a fixed HTTPS endpoint, a ten-second timeout, a short output
+  limit, no application retries and no provider fallback. Provider data collection
+  is set to deny. The API key is only an Authorization header, never prompt text.
+- Only the description and context are sent; images, passwords, user information,
+  database credentials and project body are not sent.
+- API errors, missing configuration or invalid output leave the original project
+  saved and summary null, with an honest notice in studio. No replacement summary
+  is fabricated. There is no automatic retry, regeneration button or bulk call.
+- Refreshes, public project views and studio confirmation views read the saved
+  summary without contacting OpenRouter. Each new project submission is a new
+  project and may incur one request; do not save duplicates just to retry AI.
+- Already saved projects without a summary are not automatically backfilled when
+  you add a key. Test with an intended new project after configuring the key.
+
+### Test Stage 7
+
+Run `npm run check`, `npm run build` and `node --test scripts/openrouter.test.js`.
+The unit tests mock the service and incur no API charges. They cover request
+bounds, validation, response rejection, timeouts, missing keys, failed requests,
+authentication and concurrent duplicate-processing prevention.
+
+For database/rendering verification, start
+`npm run preview -- --host 127.0.0.1 --port 4179`, then run
+`node scripts/test-summary-workflow.js`. It uses a temporary session for the
+existing administrator and temporary projects; all model responses are mocked.
+It verifies Neon storage, studio/sidebar rendering, refreshes, failed-AI handling
+and preservation of original projects, then removes its temporary records.
+No administrator password is read and no real OpenRouter request is made.
+The older `test-add-project.js` refuses to run with a real OpenRouter key to avoid
+silently spending credits during its multiple creation checks.
+
+For one real browser test, configure the key privately, restart `npm run dev`,
+sign in to studio and create an intended new project with a clear description
+and context. Expect a summary on the confirmation and project sidebar. Refresh:
+the summary should stay the same and OpenRouter Activity should show no extra
+request. Sign out to confirm the creation form remains protected. A live model
+response cannot be verified until a working private key is configured.
+
+To remove AI later, remove the summary-processing call/private env imports from
+the create action, `src/lib/server/openrouter.js`,
+`src/lib/server/project-summary.js` and the two summary verification scripts.
+Remove the AI confirmation/sidebar sections if desired. Stored summaries can stay
+in Neon; do not delete content automatically. No public page needs an API key.

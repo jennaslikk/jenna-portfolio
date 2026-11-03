@@ -1,4 +1,6 @@
 <script>
+ import { enhance } from '$app/forms';
+ let savingProject = $state(false);
  import PaletteTool from '#lib/components/PaletteTool.svelte';
  import { projectCategories, projectTypes, projectFields } from '#lib/project-form';
  let { data, form } = $props();
@@ -23,8 +25,23 @@
     <p class="hint">Saving publishes the project on Work. New projects start with an empty artwork placeholder.</p>
     {#if data.createdProject}
      <p class="success" role="status">Project saved: <a href={`/work/${data.createdProject.slug}`}>{data.createdProject.title} — View project</a></p>
+     {#if data.createdProject.summary}
+      <section class="studio-summary" aria-labelledby="studio-summary-title">
+       <h3 class="label" id="studio-summary-title">Summary (AI-generated)</h3>
+       <p>{data.createdProject.summary}</p>
+       <p class="hint">Review this AI-generated text for accuracy.</p>
+      </section>
+     {:else}
+      <p class="hint" role="status">{data.createdProject.summaryStatus === 'not_configured' ? 'Your project is saved. AI summary generation is not configured yet.' : 'Your project is saved, but its AI summary is unavailable. No automatic retry will be made.'}</p>
+     {/if}
     {/if}
-    <form method="POST" action="?/createProject">
+    <form method="POST" action="?/createProject" use:enhance={({ cancel }) => {
+     if (savingProject) { cancel(); return; }
+     savingProject = true;
+     return async ({ update }) => {
+      try { await update(); } finally { savingProject = false; }
+     };
+    }}>
      {#if form?.projectMessage}<p class="message" role="alert">{form.projectMessage}</p>{/if}
      {#each projectFields as field}
       <div class="field">
@@ -58,7 +75,7 @@
        </div>
       {/if}
      {/each}
-     <button class="button" type="submit">Save project</button>
+     <button class="button" type="submit" disabled={savingProject}>{savingProject ? 'Saving project and summary…' : 'Save project'}</button>
     </form>
    </section>
    <section class="comments-section" id="comments" aria-labelledby="comments-title">
@@ -157,6 +174,8 @@
  .field-error { margin-bottom: 0; font-size: 15px; }
  [aria-invalid="true"] { border-top-color: var(--ink); border-right-color: var(--ink); border-bottom-color: var(--ink); border-left-color: var(--ink); background-color: var(--pink); }
  .success { padding-top: 16px; padding-right: 16px; padding-bottom: 16px; padding-left: 16px; background-color: var(--pink); }
+ .studio-summary { margin-bottom: 24px; }
+ .studio-summary h3 { margin-bottom: 12px; }
  .comments-section { scroll-margin-top: calc(var(--header) + 24px); }
  .selected-project { margin-top: 32px; margin-right: 0; margin-bottom: 24px; margin-left: 0; }
  .comment-list { margin-top: 32px; }

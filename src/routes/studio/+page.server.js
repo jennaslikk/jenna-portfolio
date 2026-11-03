@@ -1,4 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+import { database } from '#lib/server/db';
+import { completeProjectSummary } from '#lib/server/project-summary';
 import { normaliseHex, getPalette } from '#lib/server/color-api';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
 import { studioComments, saveComment, validateComment, deleteComment } from '#lib/server/comments';
@@ -16,7 +19,7 @@ export async function load({ locals, url, cookies }) {
  if (slug && /^[a-z0-9-]{1,100}$/.test(slug)) {
   try {
    const project = await findProject(slug);
-   if (project.createdViaStudio) createdProject = { slug: project.slug, title: project.title };
+   if (project.createdViaStudio) createdProject = { slug: project.slug, title: project.title, summary: project.summary, summaryStatus: project.summaryStatus };
   } catch { /* A stale confirmation URL must not break the studio. */ }
  }
  let commentsData;
@@ -88,7 +91,7 @@ export const actions = {
   // Refreshing the confirmation reloads stored comments without posting again.
   redirect(303, `/studio?project=${encodeURIComponent(values.project)}&commentSaved=1#comments`);
  },
- createProject: async ({ locals, request }) => {
+ createProject: async ({ locals, request, fetch }) => {
   // Authorisation runs before reading the submitted content or writing anything.
   requireUser(locals);
   if (Number(request.headers.get('content-length') || 0) > 131072) {
@@ -106,7 +109,13 @@ export const actions = {
   try { saved = await createProject(project, locals); } catch {
    return fail(503, { values, projectMessage: 'The project could not be saved. Please try again shortly.' });
   }
-  // A GET after saving prevents refresh from submitting the project a second time.
+  // A failed or unconfigured AI service must never lose an already-saved project.
+  try {
+   await completeProjectSummary({ locals, slug: saved.slug, project,
+    apiKey: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL,
+    connect: database, fetcher: fetch });
+  } catch { /* The studio shows an unavailable-summary notice; no automatic paid retry. */ }
+  // A GET after saving prevents refresh from submitting or generating again.
   redirect(303, `/studio?created=${saved.slug}`);
  },
  login: async ({ request, cookies, locals, getClientAddress }) => {
