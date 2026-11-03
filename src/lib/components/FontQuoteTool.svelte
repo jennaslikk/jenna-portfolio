@@ -9,10 +9,43 @@
  let offset = $state(0);
  let loadState = $state('loading');
  let previewFamily = $state('');
+ let quoteElement = $state();
  const pairing = $derived(dailyPairing(day, offset));
  const supportsDetails = $derived(pairing.font.metadataUrl.startsWith('https://api.fontsource.org/'));
  const fontResult = $derived(detailsByFont[pairing.font.id] || (result?.fontDetails?.id === pairing.font.id ? result : null));
- const dateLabel = $derived(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Stockholm', day: 'numeric', month: 'long' }).format(new Date(day + 'T12:00:00Z')));
+
+ // Preserve whole words, shrinking only when a word cannot fit the specimen width.
+ $effect(() => {
+  const element = quoteElement;
+  const words = pairing.quote.split(/\s+/);
+  previewFamily;
+  if (!element) return;
+  const fitWords = () => {
+   element.style.fontSize = '';
+   const style = getComputedStyle(element);
+   const measure = document.createElement('span');
+   measure.style.position = 'absolute';
+   measure.style.visibility = 'hidden';
+   measure.style.whiteSpace = 'nowrap';
+   measure.style.fontFamily = style.fontFamily;
+   measure.style.fontWeight = style.fontWeight;
+   measure.style.fontSize = style.fontSize;
+   measure.style.letterSpacing = style.letterSpacing;
+   element.append(measure);
+   let longest = 0;
+   for (const word of words) {
+    measure.textContent = word;
+    longest = Math.max(longest, measure.getBoundingClientRect().width);
+   }
+   measure.remove();
+   const available = element.clientWidth - 1;
+   if (available > 0 && longest > available) element.style.fontSize = `${parseFloat(style.fontSize) * available / longest}px`;
+  };
+  const observer = new ResizeObserver(fitWords);
+  observer.observe(element);
+  fitWords();
+  return () => observer.disconnect();
+ });
 
  // Keep the external API integration without adding a visible details control.
  $effect(() => {
@@ -54,12 +87,11 @@
 
 <section class="font-quote-tool" id="font-quote" aria-labelledby="font-quote-title">
  <h2 class="label" id="font-quote-title">Font &amp; quote of the day</h2>
- <p class="edition" aria-live="polite">{offset === 0 ? `Today · ${dateLabel}` : 'Another discovery'} <span>Europe/Stockholm</span></p>
  <figure class={`specimen ${pairing.font.composition}`} aria-busy={loadState === 'loading'}>
   {#if loadState === 'loading'}
    <p class="loading" role="status">Loading today’s type specimen…</p>
   {:else}
-   <blockquote class="quote" style:font-family={previewFamily ? `"${previewFamily}"` : 'var(--serif)'} style:font-weight={pairing.font.weight}>{pairing.quote}</blockquote>
+   <blockquote bind:this={quoteElement} class="quote" style:font-family={previewFamily ? `"${previewFamily}"` : 'var(--serif)'} style:font-weight={pairing.font.weight}>{pairing.quote}</blockquote>
    {#if loadState === 'unavailable'}<p class="fallback" role="status">Featured font unavailable. This is a fallback preview.</p>{/if}
   {/if}
  </figure>
@@ -87,17 +119,17 @@
 </section>
 
 <style>
- .font-quote-tool{margin-top:0;padding-top:0;}
- h2{margin-bottom:20px;}
- .edition{display:flex;flex-wrap:wrap;justify-content:space-between;row-gap:4px;column-gap:12px;margin-bottom:16px;}
- .edition,.fallback,.loading{font-family:var(--sans);font-size:var(--studio-caption-size,15px);line-height:1.4;}
- .edition span{opacity:0.7;}
- .specimen{container-type:inline-size;display:flex;flex-direction:column;justify-content:space-between;row-gap:24px;min-height:280px;margin-top:0;margin-right:0;margin-bottom:24px;margin-left:0;padding-top:28px;padding-right:24px;padding-bottom:24px;padding-left:24px;background-color:transparent;color:var(--ink);border-top-width:var(--hairline);border-right-width:var(--hairline);border-bottom-width:var(--hairline);border-left-width:var(--hairline);border-top-style:solid;border-right-style:solid;border-bottom-style:solid;border-left-style:solid;border-top-color:var(--line);border-right-color:var(--line);border-bottom-color:var(--line);border-left-color:var(--line);}
- .specimen .quote{font-size:42px;font-size:clamp(30px,14cqi,54px);line-height:1.2;letter-spacing:-0.02em;text-transform:none;text-align:left;overflow-wrap:anywhere;white-space:normal;margin-top:0;margin-right:0;margin-bottom:0;margin-left:0;}
+ .font-quote-tool{display:flex;flex-direction:column;align-items:center;margin-top:0;padding-top:0;}
+ h2{width:100%;margin-bottom:20px;text-align:center;}
+ .fallback,.loading{font-family:var(--sans);font-size:var(--studio-caption-size,15px);line-height:1.4;}
+ .specimen{width:100%;container-type:inline-size;display:flex;flex-direction:column;justify-content:center;align-items:center;row-gap:24px;min-height:280px;margin-top:0;margin-right:0;margin-bottom:24px;margin-left:0;padding-top:24px;padding-right:24px;padding-bottom:24px;padding-left:24px;background-color:transparent;color:var(--ink);border-top-width:var(--hairline);border-right-width:var(--hairline);border-bottom-width:var(--hairline);border-left-width:var(--hairline);border-top-style:solid;border-right-style:solid;border-bottom-style:solid;border-left-style:solid;border-top-color:var(--line);border-right-color:var(--line);border-bottom-color:var(--line);border-left-color:var(--line);}
+ .specimen .quote{width:100%;min-width:0;max-width:100%;box-sizing:border-box;font-size:42px;font-size:clamp(30px,14cqi,54px);line-height:1.2;letter-spacing:-0.02em;text-transform:none;text-align:center;overflow-wrap:anywhere;word-break:normal;hyphens:none;white-space:normal;margin-top:0;margin-right:0;margin-bottom:0;margin-left:0;}
  .script .quote{font-size:48px;font-size:clamp(36px,17cqi,64px);line-height:1.35;letter-spacing:0;text-align:center;}
  .retro .quote{text-align:center;letter-spacing:0.015em;}
  .playful .quote{text-align:center;line-height:1.25;letter-spacing:0;}
  .experimental .quote{letter-spacing:0;}
+ .font-details{width:100%;text-align:center;}
  .font-details h3{margin-top:0;margin-bottom:8px;}
+ .font-quote-tool>.button{align-self:center;}
  .loading,.fallback{margin-top:0;margin-bottom:0;}
 </style>

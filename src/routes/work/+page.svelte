@@ -59,7 +59,11 @@
      {#each filteredProjects as project (project.slug)}
       <article class={`project-card card-${projects.indexOf(project) + 1}`} class:portrait-card={project.format === 'portrait'} class:pattern-staggered={displayedCategory === 'All Projects' && placements[project.slug].staggered} style:grid-row-start={displayedCategory === 'All Projects' ? placements[project.slug].row : undefined} style:grid-column-start={displayedCategory === 'All Projects' ? placements[project.slug].column : undefined}>
        <a href={`/work/${project.slug}`}>
-        <Media src={project.cover || ''} hoverSrc={project.hoverCover || ''} hoverVideoSrc={project.hoverVideo || ''} active autoplay label={project.title} ratio={project.format === 'portrait' ? '9 / 16' : '16 / 9'}/>
+        {#if project.workCardVideo && project.film}
+         <Media src={project.film} video autoplay label={`${project.title}: ${project.description}`} ratio={project.format === 'portrait' ? '9 / 16' : '16 / 9'}/>
+        {:else}
+         <Media src={project.cover || ''} hoverSrc={project.hoverCover || ''} hoverVideoSrc={project.hoverVideo || ''} active autoplay label={project.title} ratio={project.format === 'portrait' ? '9 / 16' : '16 / 9'}/>
+        {/if}
         <h2 class="label">{project.title}</h2>
         <p>{project.description}</p>
        </a>

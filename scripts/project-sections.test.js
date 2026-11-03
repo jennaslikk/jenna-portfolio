@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sectionTypes, sectionLayouts, makeSection, validateSectionLayout, moveSection, projectFromForm, validatePreviewProject } from '../src/lib/studio/project-sections.js';
+import { sectionTypes, sectionLayouts, makeSection, validateSectionLayout, moveSection, projectFromForm, validatePreviewProject, updatePreviewText } from '../src/lib/studio/project-sections.js';
 
 const section = (type = 'introduction', suffix = 'one') => makeSection(type, 'section-' + suffix);
 
@@ -57,4 +57,28 @@ test('preview contains only allowed fields, keeps plain text and never accepts a
  assert.equal(parsed.cover, '');
  assert.equal(parsed.databasePassword, undefined);
  assert.throws(() => validatePreviewProject({...project,title:'x'.repeat(161)}));
+});
+
+test('inline edits update approved text fields only and preserve unfinished role lines', () => {
+ const form = new FormData();form.set('title','A project');
+ const project = projectFromForm(form,[section()]);
+ const edited = updatePreviewText(project,{target:'section',id:'section-one',field:'description',value:'My revised description.'});
+ assert.equal(edited.layout.sections[0].description,'My revised description.');
+ assert.equal(project.layout.sections[0].description,'');
+ const roles = updatePreviewText(project,{target:'project',field:'roles',value:'Illustration\n'});
+ assert.deepEqual(roles.roles,['Illustration','']);
+ const item = {src:'/images/example.png',kind:'image',ratio:1,alt:'An illustration',caption:''};
+ const withMedia = structuredClone(project);
+ withMedia.layout.sections[0].media = [item];
+ const caption = updatePreviewText(withMedia,{target:'caption',id:'section-one',index:0,value:'Revised caption'},[{src:item.src,kind:item.kind}]);
+ assert.equal(caption.layout.sections[0].media[0].caption,'Revised caption');
+ assert.equal(caption.layout.sections[0].media[0].src,item.src);
+ for (const action of [
+  {target:'project',field:'cover',value:'/private.png'},
+  {target:'section',id:'section-one',field:'layout',value:'custom'},
+  {target:'section',id:'section-missing',field:'heading',value:'Missing'},
+  {target:'project',field:'title',value:'x'.repeat(161)},
+  {target:'project',field:'roles',value:Array(21).fill('Role').join('\n')},
+  {target:'caption',id:'section-one',index:0,value:'No media'}
+ ]) assert.throws(()=>updatePreviewText(project,action));
 });

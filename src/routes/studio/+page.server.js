@@ -1,6 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { generateProjectSummary } from '#lib/server/project-summary';
+import { generateProjectLayout, layoutFailureMessage } from '#lib/server/openrouter';
+import { layoutToDraft } from '#lib/studio/layout-response';
+import { projectCategories } from '#lib/project-form';
+import { publicProjectMedia } from '#lib/server/project-media';
 import { getFontDetails } from '#lib/server/font-details';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
 import { studioComments, saveComment, validateComment, deleteComment } from '#lib/server/comments';
@@ -28,10 +32,22 @@ export async function load({ locals, url, cookies }) {
  // Consume the deletion notice once instead of keeping it in the URL.
  const commentDeleted = cookies.get('studio_comment_deleted') === url.searchParams.get('project');
  if (cookies.get('studio_comment_deleted')) cookies.delete('studio_comment_deleted', { path: '/studio', secure: true });
- return { user, createdProject, ...commentsData, commentSaved: url.searchParams.get('commentSaved') === '1', commentDeleted };
+ return { user, createdProject, builderMedia: await publicProjectMedia(), ...commentsData, commentSaved: url.searchParams.get('commentSaved') === '1', commentDeleted };
 }
 
 export const actions = {
+ generateLayout: async ({ locals, request, fetch }) => {
+  requireUser(locals);
+  if (Number(request.headers.get('content-length') || 0) > 32768) return fail(413, {layoutMessage:'Please shorten your project description.'});
+  let input;
+  try { input=await request.formData(); } catch { return fail(400,{layoutMessage:'Please use the project description form.'}); }
+  const title=input.get('title'),category=input.get('category'),description=input.get('description');
+  if(typeof title!=='string'||!title.trim()||title.length>160||!projectCategories.includes(category)||typeof description!=='string'||!description.trim()||description.length>5000)return fail(400,{layoutMessage:'Add a project name, choose a category, and tell me about the project.'});
+  try {
+   const layout=await generateProjectLayout({title:title.trim(),category,description:description.trim()},{apiKey:env.OPENROUTER_API_KEY,model:env.OPENROUTER_MODEL,fetcher:fetch});
+   return {layoutDraft:layoutToDraft(layout,title.trim())};
+  } catch (error) {return fail(502,{layoutMessage:layoutFailureMessage(error)});}
+ },
  generateSummary: async ({ locals, request, fetch }) => {
   // Authenticate before reading drafts or making a potentially paid API request.
   requireUser(locals);

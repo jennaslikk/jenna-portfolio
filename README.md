@@ -31,17 +31,19 @@ The brief requires a public repository with meaningful commit history, a README 
 
 See VALIDATION.md for the distinction between implemented code, mocked tests, live tests and items still awaiting verification.
 
-## Project builder — Stage A
+## Visual project builder — current increment
 
-The Add Project form now contains a manual section editor and private full-page preview. Choose among 12 section types and 9 existing editorial presentation patterns; edit headings, descriptions and additional text, reorder/remove sections, and preview at actual 1440px desktop or 390px mobile viewport widths. The preview includes entered project metadata, body text, summary, navigation, footer and details sidebar.
+Studio now starts with a project name, category, description and optional local reference. **Generate my project layout** asks the existing server-only OpenRouter integration for a validated selection of approved editorial sections. It opens a large visual draft using the same `ProjectPage.svelte` and `ProjectSections.svelte` components as the public project route, with actual desktop/mobile viewport widths.
 
-**This foundation is preview-only.** Section layouts live in browser memory and are cleared by refresh or leaving Studio. No layout is written to Neon yet. Media blocks are placeholders until Stage C. AI layout generation is Stage B; draft saving, editing, publication and unpublication are Stage D. The original simple project-publishing and AI-summary workflows remain available when no section layout is active. Active layouts are blocked from that legacy publish action so sections cannot silently be dropped.
+Click project text and type directly in the preview: headings, descriptions, captions and sidebar details are editable in place. Use section controls to reorder, remove, undo removal or add a section. Click media placeholders to choose images/videos already used by public portfolio projects. Original media proportions are read locally. Optional dialogs hold presentation choices and project metadata; the original working form remains under **More project options**.
 
-The public project route and `/studio/preview` both use `src/lib/components/project/ProjectPage.svelte`, with reusable new-layout sections in `ProjectSections.svelte`. Existing custom projects keep their original rendering branches. The private preview requires authentication, has no draft data in its URL or server HTML, receives validated data only from its same-origin parent window, and uses the same public CSS in its own iframe viewport. Only this authenticated preview route permits same-origin framing; the main Studio retains frame denial.
+**This increment is preview-only.** Drafts stay in browser memory and disappear on refresh/navigation. Save Draft, reopen/edit and explicit Publish are the next stage. The old form cannot publish a section layout accidentally. No project records or schema were changed. Future persistence must add server-protected draft storage and publication filtering before enabling publication.
 
-The existing Neon `content` JSONB column was confirmed by a read-only schema check; no schema migration or record changes were needed for Stage A. Future media selection will be restricted to approved existing public paths. A private draft page does not make files in `static/` private. Permanent private uploads need a separate storage decision and must never be sent to AI automatically.
+The optional reference image stays on the device; it is not sent to OpenRouter, stored or used for AI analysis. Only name, category and description leave the browser for AI generation. No upload service or new credentials are needed. Existing static media is already public; a private draft does not make those files private. Unreleased assets are excluded from the chooser.
 
-See [builder stages and verification](documents/PROJECT-BUILDER.md). Unit checks: `node --test scripts/project-sections.test.js`.
+The private preview requires authentication, uses origin/source-checked messages, and validates every preview model. No draft enters its URL or server HTML. AI returns structured data, never executable HTML/CSS. Generation uses one request per explicit click, with timeout, validation and no automatic retries. Existing summaries reuse the same server-only request transport and remain a separate working feature.
+
+See [builder stages and verification](documents/PROJECT-BUILDER.md). Checks: `node --test scripts/project-sections.test.js scripts/project-layout.test.js scripts/openrouter.test.js`.
 
 ## Intentionally left out
 

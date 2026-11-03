@@ -143,3 +143,29 @@ Verification: three mocked unit tests passed for the fixed endpoint, response va
 
 
 Latest font-tool simplification: removed the visible Font Details control and metadata rows at Jenna’s request. The protected metadata form is now hidden and triggered once per supported selected font; the returned family name supplies the visible font label. The server’s 24-hour cache and validation remain. Browser verification with mocked API responses confirmed no visible detail control/rows, one lookup for each of the nine supported fonts over a full discovery cycle with no repeat request on returning to the starting font, and retention of typed project/summary text. Svelte checks, build and seven font tests passed; no paid requests or database writes were made.
+
+
+## Visual project creator increment
+
+The Studio default form is now a three-field creative brief plus optional local-only reference. Authenticated Generate Layout reuses the server-only OpenRouter integration, requests strict structured data and validates it against approved sections. Visual editing and public-media selection reuse the shared portfolio renderer. The original form remains under More project options. No persistent layout save/publication is enabled in this increment.
+
+Verification: 13 summary/section/layout unit tests; Svelte check zero errors/warnings; production build passed. Browser tests used mocked AI, mocked session lookup, real read-only public project queries, and blocked all database writes. They covered authentication/Origin/input rejection, loading/request count, different animation/branding structures, text editing, section add/reorder/remove/undo, approved cover/image/video selection, captions/natural image ratio, desktop/mobile preview/edit toggle, no mobile preview overflow, preserved work after generation failure and Studio widths 390/768/1001/1440/1920. All 30 public project/viewport samples matched the original text/media/typography/geometry baseline. Desktop screenshot inspected. No paid AI request or Neon mutation occurred. Live configured-model layout support and future draft persistence/publishing still require separate verification.
+
+### Live layout diagnostic — 3 November 2026
+
+One explicitly approved real request used a generic animation brief and the configured Gemini 2.5 Flash Lite model. OpenRouter returned HTTP 400, code 400, message “Provider returned error”, before a layout was produced. This confirms a provider rejection; it does not identify the exact rejected setting. No retry, project save or Neon mutation occurred, and no secret was printed.
+
+Applied a compatibility adjustment: provider schema length/count limits now use descriptive guidance, while the unchanged local validator still enforces every bound, required field and approved type/layout. This follows Google's guidance to simplify rejected schemas; it remains a suspected remedy, not a confirmed live fix. Fifteen mocked unit tests pass, including schema compatibility and retained local bounds. A live request after this adjustment remains unverified because only one diagnostic request was authorized.
+
+### Builder alignment with Fruity Pigs
+
+Removed the builder-only text/image columns: all section descriptions now sit above their media. The existing text-image identifier remains compatible but its label is now Text above image. Empty media sections no longer display a dummy paragraph. Heading-to-paragraph spacing and heading-to-media spacing use the Fruity Pigs pattern; single media uses the existing centered process-media width. AI instructions explicitly preserve this visual order.
+
+Read-only browser measurements passed for all nine presentation choices at 390/768/1000/1001/1440/1920px: media below supporting text, matching Fruity Pigs paragraph width/font/line height/heading gap, no horizontal overflow. Fifteen unit tests, Svelte check and production build passed. AI requests and database writes were blocked during these layout checks.
+
+
+### Direct inline text editing
+
+Studio now edits project title/introduction/year, section headings/descriptions/additional text, project body, sidebar values and media captions in place. The reusable editor inherits actual page typography, accepts plain-text paste only, preserves original capitalization beneath uppercase styles, and sends validated field-specific changes to the parent draft. Layout/media controls remain separate; clean preview and public pages have no editable fields.
+
+Verified with mocked AI and blocked database writes: actual browser typing/cursor retention, no text dialog, project and sidebar field edits, multiline roles, safe plain-text paste, desktop/mobile and clean-preview/edit transitions, and no extra AI requests while editing. Sixteen unit tests, Svelte check and production build passed. No new paid request or database mutation occurred. Draft persistence/publication remains unimplemented.

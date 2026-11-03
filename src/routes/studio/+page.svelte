@@ -1,4 +1,5 @@
 <script>
+ import VisualProjectCreator from '#lib/components/VisualProjectCreator.svelte';
  import ProjectBuilder from '#lib/components/ProjectBuilder.svelte';
  import { enhance } from '$app/forms';
  let builderSections = $state([]);
@@ -15,13 +16,14 @@
 </svelte:head>
 
 <main id="main" class="studio fade" class:workspace={!!data.user}>
- <section class="studio-panel" aria-labelledby="studio-title">
-  <h1 id="studio-title">Studio</h1>
+ <section class="studio-panel" aria-label="Studio">
   {#if data.user}
-   {#if form?.message}<p class="message" role="alert">{form.message}</p>{/if}
-   <section class="add-project" aria-labelledby="add-project-title">
-    <h2 id="add-project-title">Add a project</h2>
-    <p class="hint">Saving publishes the project on Work. New projects start with an empty artwork placeholder.</p>
+  <h1 class="studio-title">Studio</h1>
+  {#if form?.message}<p class="message" role="alert">{form.message}</p>{/if}
+  <div class="studio-columns">
+  <section class="add-project" aria-labelledby="add-project-title">
+   <h2 id="add-project-title">Add a project</h2>
+    <VisualProjectCreator media={data.builderMedia || []} />
     {#if data.createdProject}
      <p class="success" role="status">Project saved: <a href={`/work/${data.createdProject.slug}`}>{data.createdProject.title} — View project</a></p>
      {#if data.createdProject.summary}
@@ -34,6 +36,8 @@
       <p class="hint" role="status">Your project is saved without an AI summary.</p>
      {/if}
     {/if}
+    <details class="legacy-project-options"><summary>More project options</summary>
+    <p class="hint">The original form and AI summary tool are available here. Saving this form publishes a simple project.</p>
     <form method="POST" action="?/createProject" use:enhance={({ cancel, action }) => {
      if (savingProject || generatingSummary) { cancel(); return; }
      const generating = action.search === '?/generateSummary';
@@ -87,9 +91,12 @@
        </fieldset>
        <div class="field">
         <label class="label" for="project-type">Type *</label>
-        <select id="project-type" name="type" required value={form?.values?.type || 'landscape'} aria-invalid={form?.errors?.type ? 'true' : undefined} aria-describedby={form?.errors?.type ? 'type-error' : undefined}>
-         {#each projectTypes as type}<option value={type}>{type === 'portrait' ? 'Portrait (9:16)' : 'Landscape (16:9)'}</option>{/each}
-        </select>
+        <span class="select-control">
+         <select id="project-type" name="type" required value={form?.values?.type || 'landscape'} aria-invalid={form?.errors?.type ? 'true' : undefined} aria-describedby={form?.errors?.type ? 'type-error' : undefined}>
+          {#each projectTypes as type}<option value={type}>{type === 'portrait' ? 'Portrait (9:16)' : 'Landscape (16:9)'}</option>{/each}
+         </select>
+         <span class="select-arrow" aria-hidden="true">⌄</span>
+        </span>
         {#if form?.errors?.type}<p class="field-error" id="type-error">{form.errors.type}</p>{/if}
        </div>
       {/if}
@@ -98,18 +105,22 @@
      {#if builderSections.length}<p class="hint" role="status">This section layout is preview-only in Stage A. It cannot be published yet; refreshing or leaving Studio clears these unsaved sections.</p>{/if}
      <button class="button" type="submit" disabled={savingProject || generatingSummary || builderSections.length > 0}>{savingProject ? 'Saving project…' : 'Save project'}</button>
     </form>
+    </details>
    </section>
    <section class="comments-section" id="comments" aria-labelledby="comments-title">
-    <h2 id="comments-title">Comments</h2>
+    <h2 id="comments-title">Add a comment</h2>
     {#if data.commentLoadError}<p role="alert">{data.commentLoadError}</p>{/if}
     {#if data.commentProjects.length}
      <form method="GET" action="/studio#comments">
       <div class="field">
        <label class="label" for="comment-project">Project</label>
-       <select id="comment-project" name="project" required value={data.selectedCommentProject?.slug || ''}>
-        <option value="" disabled>Choose a project</option>
-        {#each data.commentProjects as project}<option value={project.slug}>{project.title}</option>{/each}
-       </select>
+       <span class="select-control">
+        <select id="comment-project" name="project" required value={data.selectedCommentProject?.slug || ''}>
+         <option value="" disabled>Choose a project</option>
+         {#each data.commentProjects as project}<option value={project.slug}>{project.title}</option>{/each}
+        </select>
+        <span class="select-arrow" aria-hidden="true">⌄</span>
+       </span>
       </div>
       <button class="button outline" type="submit">View comments</button>
      </form>
@@ -156,6 +167,7 @@
      </div>
     {/if}
    </section>
+    </div>
   {:else}
    <form method="POST" action="?/login">
     <div class="field">
@@ -215,10 +227,6 @@
    --studio-heading-size:clamp(28px,2.34375vw,33.75px);
    font-size:clamp(15px,1.25vw,18px);
   }
-  .studio h1{
-   font-size:calc(52px + (100vw - 1000px) * 4.25 / 440);
-   line-height:calc(62.4px + (100vw - 1000px) * 5.1 / 440);
-  }
  }
  @media(max-width:700px){
   .studio {
@@ -230,24 +238,47 @@
    line-height:1.3;
   }
  }
- .studio { flex-grow: 1; display: grid; align-items: center; justify-items: center; padding-top: 64px; padding-right: 7%; padding-bottom: 100px; padding-left: 7%; }
- /* The tools have their own scroll area so both remain reachable in a short window. */
- /* One shared column width keeps the header, tools and footer dividers aligned. */
+ .studio { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding-top: 64px; padding-right: 7%; padding-bottom: 100px; padding-left: 7%; }
+ /* Keep the Studio tools aligned with the shared header and footer columns. */
  @media(min-width:1001px){
   :global(body:has(.studio.workspace)){--sidebar:max(220px,15.739583%);}
  }
  .studio.workspace{
+  display:grid;
   grid-template-columns:minmax(0,1fr) var(--sidebar);
-  align-items:start;
+  align-items:stretch;
+  min-height:calc(100svh - var(--header) - 90px);
   padding-top:0;
   padding-right:0;
   padding-bottom:0;
   padding-left:0;
  }
  .workspace .studio-panel{
-  width:calc(100% - 64px);
-  margin-top:64px;
-  margin-bottom:100px;
+  box-sizing:border-box;
+  width:min(1100rem,calc(100% - 80rem));
+  max-width:none;
+  margin-top:78rem;
+  margin-right:auto;
+  margin-bottom:64rem;
+  margin-left:auto;
+ }
+ .studio-title{
+  margin-top:0;
+  margin-right:0;
+  margin-bottom:50rem;
+  margin-left:0;
+  font-family:var(--serif);
+  font-size:75rem;
+  font-weight:400;
+  line-height:1.2;
+  text-align:center;
+ }
+ .studio-columns{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+  column-gap:64rem;
+  row-gap:40rem;
  }
  .studio-sidebar{
   align-self:stretch;
@@ -263,25 +294,54 @@
   top:var(--header);
   max-height:calc(100dvh - var(--header));
   overflow-y:auto;
-  padding-top:40px;
-  padding-right:28px;
-  padding-bottom:40px;
-  padding-left:28px;
+  padding-top:55rem;
+  padding-right:55rem;
+  padding-bottom:40rem;
+  padding-left:55rem;
   scrollbar-width:thin;
  }
- @media(max-width:1000px){
-  .studio.workspace{display:block;}
-  .workspace .studio-panel{width:86%;margin-top:40px;margin-right:auto;margin-bottom:64px;margin-left:auto;}
-  .studio-sidebar{border-left-width:0;border-top-width:var(--hairline);border-top-style:solid;border-top-color:var(--line);}
-  .studio-tools{position:static;max-height:none;overflow-y:visible;padding-top:32px;padding-right:7%;padding-bottom:48px;padding-left:7%;}
+ @media(min-width:1201px){
+  main.studio.workspace .studio-tools :global(.specimen){
+   min-height:142rem;
+   margin-bottom:24rem;
+   padding-top:14rem;
+   padding-right:14rem;
+   padding-bottom:14rem;
+   padding-left:14rem;
+   row-gap:12rem;
+  }
  }
+ @media(max-width:1200px){
+  .studio.workspace{display:block;min-height:0;}
+  .workspace .studio-panel{width:min(900px,calc(100% - 48px));margin-top:56px;margin-right:auto;margin-bottom:64px;margin-left:auto;}
+  .studio-title{font-size:clamp(44px,6vw,60px);margin-bottom:36px;}
+  .studio-columns{column-gap:32px;row-gap:32px;}
+  .studio-columns .add-project,.studio-columns .comments-section{padding-top:24px;padding-right:24px;padding-bottom:24px;padding-left:24px;}
+  .studio-sidebar{border-left-width:0;border-top-width:var(--hairline);border-top-style:solid;border-top-color:var(--line);}
+  .studio-tools{position:static;max-height:none;overflow-y:visible;padding-top:40px;padding-right:32px;padding-bottom:48px;padding-left:32px;}
+ }
+ @media(max-width:1100px){
+  .studio-columns{grid-template-columns:minmax(0,1fr);}
+ }
+ @media(max-width:700px){
+  .workspace .studio-panel{width:calc(100% - 32px);margin-top:48px;margin-bottom:48px;}
+  .studio-title{font-size:48px;margin-bottom:28px;}
+  .studio-columns{row-gap:24px;}
+  .studio-columns .add-project,.studio-columns .comments-section{padding-top:24px;padding-right:20px;padding-bottom:24px;padding-left:20px;}
+  .studio-tools{padding-top:32px;padding-right:16px;padding-bottom:40px;padding-left:16px;}
+ }
+ .legacy-project-options{width:100%;margin-top:32px;}
+ .legacy-project-options>summary{cursor:pointer;font-size:var(--studio-caption-size);margin-bottom:20px;}
+ .legacy-project-options>p{margin-bottom:24px;}
  .studio-panel { width: 100%; max-width: 440px; }
- h1 { margin-bottom: 32px; }
  p { margin-bottom: 24px; }
  form { display: flex; flex-direction: column; align-items: flex-start; row-gap: 24px; }
  .ai-summary .button { align-self: flex-start; }
  .field { width: 100%; display: flex; flex-direction: column; row-gap: 10px; }
  input, select, textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding-top: 12px; padding-right: 14px; padding-bottom: 12px; padding-left: 14px; border-top-width: var(--hairline); border-right-width: var(--hairline); border-bottom-width: var(--hairline); border-left-width: var(--hairline); border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: var(--line); border-right-color: var(--line); border-bottom-color: var(--line); border-left-color: var(--line); border-top-left-radius: 0; border-top-right-radius: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; background-color: white; color: var(--ink); font-family: var(--sans); font-size: inherit; font-weight: 400; line-height: 1.3; }
+ select { appearance: none; padding-right: 42px; }
+ .select-control{position:relative;display:block;width:100%;min-width:0;}
+ .select-arrow{position:absolute;top:50%;right:16px;transform:translateY(-56%);pointer-events:none;color:var(--ink);font-family:'futura-pt',Futura,'Century Gothic',Arial,sans-serif;font-size:24px;font-weight:400;line-height:1;}
  /* Browser autofill paints over background-color; cover its tint inside the fields. */
  #username:autofill,
  #password:autofill{
@@ -300,8 +360,29 @@
  .category-option { display: flex; align-items: center; column-gap: 12px; min-height: 44px; cursor: pointer; }
  .category-option input { width: 20px; height: 20px; min-height: 0; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; flex-shrink: 0; accent-color: var(--ink); }
  .message { margin-bottom: 0; }
- .add-project, .comments-section { margin-top: 40px; padding-top: 32px; border-top-width: var(--hairline); border-top-style: solid; border-top-color: var(--line); }
+ .add-project, .comments-section {
+  min-width:0;
+  margin-top:0;
+  padding-top:36rem;
+  padding-right:36rem;
+  padding-bottom:36rem;
+  padding-left:36rem;
+  border-top-width:var(--hairline);
+  border-right-width:var(--hairline);
+  border-bottom-width:var(--hairline);
+  border-left-width:var(--hairline);
+  border-top-style:solid;
+  border-right-style:solid;
+  border-bottom-style:solid;
+  border-left-style:solid;
+  border-top-color:#aaa;
+  border-right-color:#aaa;
+  border-bottom-color:#aaa;
+  border-left-color:#aaa;
+  background-color:#fff;
+ }
  .add-project h2, .comments-section h2 { margin-bottom: 20px; }
+ .add-project h2 { text-align:left; }
  .hint { margin-bottom: 0; font-size: var(--studio-caption-size); line-height: 1.4; }
  .add-project > .hint { margin-bottom: 24px; }
  textarea { resize: vertical; line-height: 1.3; }
@@ -320,5 +401,8 @@
  .delete-comment { margin-top: 16px; }
  .comment-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 0; }
  .success a { text-decoration-line: underline; }
- @media (max-width: 700px) { .studio { padding-top: 40px; padding-bottom: 64px; } }
+ @media(max-width:700px){
+  .studio{padding-top:40px;padding-bottom:64px;}
+  .studio .add-project,.studio .comments-section{padding-top:24px;padding-right:20px;padding-bottom:24px;padding-left:20px;}
+ }
 </style>
