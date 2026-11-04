@@ -1,3 +1,5 @@
+import { projectCategories } from '../project-form.js';
+
 // Approved editorial sections share a small set of portfolio layout patterns.
 export const sectionTypes = [
  ['introduction', 'Introduction', 'text'],
@@ -89,9 +91,11 @@ export function validatePreviewProject(value, catalogue = []) {
   project[name] = [...value[name]];
  }
  if (!['landscape', 'portrait'].includes(value.format)) throw new Error('Choose a valid project format.');
+ const category = [...new Set(value.category || [])];
+ if (!Array.isArray(value.category || []) || category.some(item => !projectCategories.includes(item))) throw new Error('Choose valid project categories.');
  const cover = catalogue.some(item => item.src === value.cover && item.kind === 'image') ? value.cover : '';
  const coverRatio = Number.isFinite(value.coverRatio) && value.coverRatio > 0.05 && value.coverRatio < 20 ? value.coverRatio : 16 / 9;
- return { ...project, format: value.format, slug: 'studio-preview', createdViaStudio: true, layout: validateSectionLayout(value.layout, catalogue), cover, coverRatio };
+ return { ...project, category, format: value.format, slug: 'studio-preview', createdViaStudio: true, layout: validateSectionLayout(value.layout, catalogue), cover, coverRatio };
 }
 
 export function projectFromForm(formData, sections) {
@@ -101,6 +105,7 @@ export function projectFromForm(formData, sections) {
   title: text('title') || 'Project title', description: text('description') || 'Project description',
   client: text('client'), year: text('year'), context: text('context'), summary: text('summary'), body: text('body'),
   roles: lines('roles'), tools: lines('tools'), format: text('type') || 'landscape',
+  category: formData.getAll('category'),
   layout: { version: 1, sections }
  });
 }

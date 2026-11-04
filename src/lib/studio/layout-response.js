@@ -23,11 +23,11 @@ export function validateLayoutResponse(value) {
  return value;
 }
 
-export function layoutToDraft(value, title) {
+export function layoutToDraft(value, title, category = []) {
  const validated=validateLayoutResponse(value);
  const sections=validated.sections.map((section,index)=>({...makeSection(section.type,'section-ai-'+index),heading:section.heading,description:section.description,text:section.text,layout:section.layout}));
  return {
-  project:validatePreviewProject({title,description:validated.intro,format:validated.format,client:'',year:'',context:'',summary:'',body:'',roles:[],tools:[],layout:{version:1,sections}}),
+  project:validatePreviewProject({title,category,description:validated.intro,format:validated.format,client:'',year:'',context:'',summary:'',body:'',roles:[],tools:[],layout:{version:1,sections}}),
   questions:validated.questions,
   suggestions:Object.fromEntries(sections.map((section,index)=>[section.id,validated.sections[index].materials]))
  };

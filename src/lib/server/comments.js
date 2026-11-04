@@ -18,8 +18,10 @@ export function validateComment(formData) {
 export async function studioComments(locals, slug) {
  requireUser(locals);
  const sql = database();
- const projects = await sql`SELECT slug, title FROM projects ORDER BY display_order, id`;
- const selected = slug ? projects.find(project => project.slug === slug) : projects[0];
+ const projects = await sql`SELECT slug, title FROM projects
+  WHERE COALESCE(content->>'publicationStatus','published') = 'published' ORDER BY display_order, id`;
+ // Wait for an explicit choice so the first project is not shown by default.
+ const selected = slug ? projects.find(project => project.slug === slug) : null;
  if (!selected) return { commentProjects: projects, selectedCommentProject: null, comments: [], commentLoadError: slug ? 'Choose an existing project to see its comments.' : '' };
  const comments = await sql`SELECT comments.id::text AS id, comments.display_name AS name,
   comments.message, comments.created_at AS created
@@ -38,6 +40,7 @@ export async function saveComment(locals, values) {
  // Selecting the project in the insert also prevents orphan comments if a project disappears.
  const saved = await sql`INSERT INTO comments (project_id, display_name, message)
   SELECT id, ${values.name}, ${values.message} FROM projects WHERE slug = ${values.project}
+  AND COALESCE(content->>'publicationStatus','published') = 'published'
   RETURNING id`;
  return saved.length === 1;
 }

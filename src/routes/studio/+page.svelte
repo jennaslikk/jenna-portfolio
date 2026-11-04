@@ -23,7 +23,7 @@
   <div class="studio-columns">
   <section class="add-project" aria-labelledby="add-project-title">
    <h2 id="add-project-title">Add a project</h2>
-    <VisualProjectCreator media={data.builderMedia || []} />
+    <VisualProjectCreator media={data.builderMedia || []} savedProjects={data.savedProjects || []} listMessage={data.projectListMessage || ''} />
     {#if data.createdProject}
      <p class="success" role="status">Project saved: <a href={`/work/${data.createdProject.slug}`}>{data.createdProject.title} — View project</a></p>
      {#if data.createdProject.summary}
@@ -115,7 +115,8 @@
       <div class="field">
        <label class="label" for="comment-project">Project</label>
        <span class="select-control">
-        <select id="comment-project" name="project" required value={data.selectedCommentProject?.slug || ''}>
+        <!-- Load the chosen project's heading and comments together. -->
+        <select id="comment-project" name="project" required value={data.selectedCommentProject?.slug || ''} onchange={(event) => event.currentTarget.form?.requestSubmit()}>
          <option value="" disabled>Choose a project</option>
          {#each data.commentProjects as project}<option value={project.slug}>{project.title}</option>{/each}
         </select>

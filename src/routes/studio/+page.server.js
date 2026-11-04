@@ -3,7 +3,9 @@ import { env } from '$env/dynamic/private';
 import { generateProjectSummary } from '#lib/server/project-summary';
 import { generateProjectLayout, layoutFailureMessage } from '#lib/server/openrouter';
 import { layoutToDraft } from '#lib/studio/layout-response';
-import { projectCategories } from '#lib/project-form';
+import { readProjectBrief } from '#lib/studio/project-brief';
+import { validateLayoutSave } from '#lib/studio/layout-save';
+import { studioProjectList, openLayoutDraft, saveLayoutProject, DraftConflict } from '#lib/server/layout-projects';
 import { publicProjectMedia } from '#lib/server/project-media';
 import { getFontDetails } from '#lib/server/font-details';
 import { allowLogin, checkPassword, startSession, endSession, requireUser } from '#lib/server/auth';
@@ -32,20 +34,50 @@ export async function load({ locals, url, cookies }) {
  // Consume the deletion notice once instead of keeping it in the URL.
  const commentDeleted = cookies.get('studio_comment_deleted') === url.searchParams.get('project');
  if (cookies.get('studio_comment_deleted')) cookies.delete('studio_comment_deleted', { path: '/studio', secure: true });
- return { user, createdProject, builderMedia: await publicProjectMedia(), ...commentsData, commentSaved: url.searchParams.get('commentSaved') === '1', commentDeleted };
+ let savedProjects = [], projectListMessage = '';
+ try { savedProjects = await studioProjectList(locals); } catch { projectListMessage = 'Your projects could not be loaded. Please refresh to try again.'; }
+ return { user, createdProject, savedProjects, projectListMessage, builderMedia: await publicProjectMedia(), ...commentsData, commentSaved: url.searchParams.get('commentSaved') === '1', commentDeleted };
 }
 
 export const actions = {
+ saveLayout: async ({ locals, request }) => {
+  requireUser(locals);
+  if (Number(request.headers.get('content-length') || 0) > 1048576) return fail(413,{saveMessage:'This layout is too large. Please shorten it.'});
+  let input;
+  try {
+   const form = await request.formData(), raw = form.get('layout');
+   if (typeof raw !== 'string' || raw.length > 500000) return fail(400,{saveMessage:'Please check your project layout.'});
+   input = JSON.parse(raw);
+  } catch { return fail(400,{saveMessage:'The layout could not be read. Your changes remain in this tab.'}); }
+  let value;
+  try { value = validateLayoutSave(input, await publicProjectMedia()); }
+  catch (error) { return fail(400,{saveMessage:error.message || 'Please check your project details.'}); }
+  try {
+   const saved = await saveLayoutProject(value,locals);
+   return {saved,saveMessage:saved.status === 'published' ? 'Added to your portfolio.' : 'Draft saved. Find it under Your projects.'};
+  } catch (error) {
+   return fail(error instanceof DraftConflict ? 409 : 503,{saveMessage:error instanceof DraftConflict ? error.message : 'Your project could not be saved. Your changes remain in this tab; please try again.'});
+  }
+ },
+ openDraft: async ({ locals, request }) => {
+  requireUser(locals);
+  let slug;
+  try { slug = (await request.formData()).get('slug'); } catch { return fail(400,{saveMessage:'Choose a saved draft.'}); }
+  if (typeof slug !== 'string' || !/^[a-z0-9-]{1,100}$/.test(slug)) return fail(400,{saveMessage:'Choose a saved draft.'});
+  try { return {openedDraft:await openLayoutDraft(slug,locals,await publicProjectMedia())}; }
+  catch { return fail(404,{saveMessage:'This draft could not be opened. Refresh Your projects and try again.'}); }
+ },
  generateLayout: async ({ locals, request, fetch }) => {
   requireUser(locals);
   if (Number(request.headers.get('content-length') || 0) > 32768) return fail(413, {layoutMessage:'Please shorten your project description.'});
   let input;
   try { input=await request.formData(); } catch { return fail(400,{layoutMessage:'Please use the project description form.'}); }
-  const title=input.get('title'),category=input.get('category'),description=input.get('description');
-  if(typeof title!=='string'||!title.trim()||title.length>160||!projectCategories.includes(category)||typeof description!=='string'||!description.trim()||description.length>5000)return fail(400,{layoutMessage:'Add a project name, choose a category, and tell me about the project.'});
+  let brief;
+  try { brief = readProjectBrief(input); }
+  catch { return fail(400,{layoutMessage:'Add a project name, choose at least one category, and tell me about the project.'}); }
   try {
-   const layout=await generateProjectLayout({title:title.trim(),category,description:description.trim()},{apiKey:env.OPENROUTER_API_KEY,model:env.OPENROUTER_MODEL,fetcher:fetch});
-   return {layoutDraft:layoutToDraft(layout,title.trim())};
+   const layout=await generateProjectLayout(brief,{apiKey:env.OPENROUTER_API_KEY,model:env.OPENROUTER_MODEL,fetcher:fetch});
+   return {layoutDraft:layoutToDraft(layout,brief.title,brief.category)};
   } catch (error) {return fail(502,{layoutMessage:layoutFailureMessage(error)});}
  },
  generateSummary: async ({ locals, request, fetch }) => {

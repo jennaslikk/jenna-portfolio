@@ -1,9 +1,10 @@
 <script>
  import { onMount, tick } from 'svelte';
  import { enhance, applyAction } from '$app/forms';
+ import { invalidateAll } from '$app/navigation';
  import { projectCategories } from '#lib/project-form';
  import { makeSection, moveSection, sectionLayouts, validatePreviewProject, updatePreviewText } from '#lib/studio/project-sections';
- let { media = [] } = $props();
+ let { media = [], savedProjects = [], listMessage = '' } = $props();
  let ready = $state(false), generating = $state(false), message = $state('');
  let draft = $state(null), questions = $state([]), suggestions = $state({});
  let reference = $state(''), referenceMessage = $state('');
@@ -13,6 +14,48 @@
  let selectedMedia = $state(null), choosingMedia = $state(false), panelMessage = $state('');
  let removed = $state(null);
  let inlineMessage = $state('');
+ let sourceBrief = $state(null), draftKey = $state(''), savedSlug = $state(''), revision = $state('');
+ let saving = $state(false), published = $state(false), saveMessage = $state(''), savedSignature = $state('');
+ let publishDialog = $state(), approval = $state(false);
+ const dirty = $derived(!!draft && !published && JSON.stringify(draft) !== savedSignature);
+ const savedDrafts = $derived(savedProjects.filter(project => project.status === 'draft'));
+ const publishedProjects = $derived(savedProjects.filter(project => project.status === 'published'));
+
+ function prepareSave({formData,cancel}) {
+  if(saving || !draft || published){cancel();return;}
+  const intent = formData.get('intent');
+  const project = $state.snapshot(draft), signature = JSON.stringify(project);
+  formData.set('layout',JSON.stringify({project,brief:$state.snapshot(sourceBrief),key:draftKey,slug:savedSlug,revision,intent,confirmed:intent === 'publish' && approval}));
+  saving = true;saveMessage = '';
+  return async({result}) => {
+   try {
+    if(result.type === 'success' && result.data?.saved){
+     savedSlug=result.data.saved.slug;revision=result.data.saved.revision;
+     published=result.data.saved.status === 'published';savedSignature=signature;
+     saveMessage=result.data.saveMessage;
+     if(published){editing=false;publishDialog.close();}
+     await invalidateAll();
+    }else if(result.type === 'failure')saveMessage=result.data?.saveMessage || 'The project could not be saved. Your changes remain here.';
+    else await applyAction(result);
+   }catch{saveMessage='The save could not be confirmed. Refresh Your projects before saving again; your changes remain in this tab.';}
+   finally{saving=false;}
+  };
+ }
+
+ function prepareOpen({cancel}) {
+  if(saving || (dirty && !window.confirm('Your current changes are not saved. Open another draft anyway?'))){cancel();return;}
+  saveMessage='';
+  return async({result}) => {
+   if(result.type === 'success' && result.data?.openedDraft){
+    const saved=result.data.openedDraft;
+    draft=validatePreviewProject(saved.project,media);sourceBrief=saved.brief;draftKey=saved.key;
+    savedSlug=saved.slug;revision=saved.revision;savedSignature=JSON.stringify(draft);
+    questions=[];suggestions={};removed=null;published=false;editing=true;
+    await showWorkspace();
+   }else if(result.type === 'failure')saveMessage=result.data?.saveMessage || 'This draft could not be opened.';
+   else await applyAction(result);
+  };
+ }
  const desiredKind = $derived(selection?.kind === 'cover' ? 'image' : ['video','two-videos','vertical-video'].includes(draft?.layout.sections.find(s=>s.id===selection?.id)?.layout) ? 'video' : 'image');
  const availableMedia = $derived(media.filter(item=>item.kind===desiredKind));
 
@@ -50,7 +93,9 @@
    if(event.data?.type==='studio-project-edit')editAction(event.data.action);
   };
   window.addEventListener('message',receive);
-  return()=>{window.removeEventListener('message',receive);if(reference)URL.revokeObjectURL(reference);};
+  const leave = event => {if(dirty){event.preventDefault();event.returnValue='';}};
+  window.addEventListener('beforeunload',leave);
+  return()=>{window.removeEventListener('message',receive);window.removeEventListener('beforeunload',leave);if(reference)URL.revokeObjectURL(reference);};
  });
  function chooseReference(event){
   const file=event.currentTarget.files?.[0];referenceMessage='';
@@ -109,12 +154,13 @@
 
 <section class="visual-creator" aria-label="AI project creator">
  <p class="intro">Tell me about your project. I’ll suggest a case study you can refine visually.</p>
- <form class="brief-form" method="POST" action="?/generateLayout" use:enhance={({cancel})=>{
-  if(generating){cancel();return;}generating=true;message='';
+ <form class="brief-form" method="POST" action="?/generateLayout" use:enhance={({cancel,formData})=>{
+  if(generating || saving || (dirty && !window.confirm('Your current layout has unsaved changes. Generate a new layout anyway?'))){cancel();return;}generating=true;message='';
+  const brief={title:String(formData.get('title') || '').trim(),description:String(formData.get('description') || '').trim(),category:formData.getAll('category')};
   return async({result})=>{
    try{
     if(result.type==='success'&&result.data?.layoutDraft){
-     draft=validatePreviewProject(result.data.layoutDraft.project,media);questions=result.data.layoutDraft.questions;suggestions=result.data.layoutDraft.suggestions;removed=null;editing=true;await showWorkspace();
+     draft=validatePreviewProject(result.data.layoutDraft.project,media);sourceBrief=brief;draftKey=crypto.randomUUID();savedSlug='';revision='';savedSignature='';published=false;saveMessage='';questions=result.data.layoutDraft.questions;suggestions=result.data.layoutDraft.suggestions;removed=null;editing=true;await showWorkspace();
     }else if(result.type==='failure')message=result.data?.layoutMessage||'Your layout could not be generated. Your brief has been kept.';
     else await applyAction(result);
    }catch{message='The proposed layout could not be opened. Your brief and previous work have been kept.';}
@@ -125,16 +171,15 @@
    <label class="label" for="creator-name">Project name</label>
    <input id="creator-name" name="title" maxlength="160" required />
   </div>
-  <div class="brief-field">
-   <label class="label" for="creator-category">Project type</label>
-   <span class="select-control">
-    <select id="creator-category" name="category" required>
-     <option value="" disabled selected>Choose a project type</option>
-     {#each projectCategories as category}<option value={category}>{category==='Motion Graphics'?'Animation / motion':category}</option>{/each}
-    </select>
-    <span class="select-arrow" aria-hidden="true">⌄</span>
-   </span>
-  </div>
+  <fieldset class="brief-categories" aria-describedby="creator-categories-hint">
+   <legend class="label">Project categories</legend>
+   <p class="hint" id="creator-categories-hint">Choose one or more.</p>
+   <div class="category-choices">
+    {#each projectCategories as category}
+     <label class="category-choice"><input type="checkbox" name="category" value={category} /><span>{category==='Motion Graphics'?'Animation / motion':category}</span></label>
+    {/each}
+   </div>
+  </fieldset>
   <div class="brief-field">
    <label class="label" for="creator-brief">Tell me about your project</label>
    <textarea id="creator-brief" name="description" maxlength="5000" rows="6" required placeholder="What did you make? What was the idea, and how did you develop it?"></textarea>
@@ -151,20 +196,37 @@
   {#if generating}<p class="hint" role="status">Choosing sections and arranging your case study…</p>{/if}
   {#if message}<p class="hint" role="alert">{message}</p>{/if}
  </form>
- {#if draft}<button class="button outline" type="button" onclick={showWorkspace}>Continue editing your project</button>{/if}
+ {#if draft}<button class="button outline" type="button" onclick={showWorkspace}>{published?'View published preview':'Continue editing your project'}</button>{/if}
+ <section class="saved-projects" aria-labelledby="saved-projects-title">
+  <h3 class="label" id="saved-projects-title">Your projects</h3>
+  {#if listMessage}<p class="hint" role="alert">{listMessage}</p>{/if}
+  {#if saveMessage}<p class="hint" role="status">{saveMessage}</p>{/if}
+  <h4 class="label">Private drafts</h4>
+  {#if !savedDrafts.length}<p class="hint">No saved drafts yet. Choose Save Draft inside your project preview to keep it here.</p>{/if}
+  {#each savedDrafts as project (project.slug)}
+   <div class="saved-project-row"><span>{project.title}</span><form method="POST" action="?/openDraft" use:enhance={prepareOpen}><input type="hidden" name="slug" value={project.slug} /><button class="button outline" type="submit" disabled={saving}>Open draft</button></form></div>
+  {/each}
+  <h4 class="label">Published</h4>
+  {#each publishedProjects as project (project.slug)}<div class="saved-project-row"><span>{project.title}</span><a class="button outline" href={`/work/${project.slug}`}>View project</a></div>{/each}
+ </section>
  <noscript><p class="hint">Enable JavaScript to create and edit a visual project.</p></noscript>
 </section>
 
 <dialog class="visual-workspace" bind:this={workspace} aria-labelledby="visual-workspace-title">
  <div class="workspace-toolbar">
-  <div><h2 class="label" id="visual-workspace-title">Your project draft</h2><p class="hint">Click project text to edit directly. Private in this tab. Refreshing clears this draft; saving is the next stage.</p></div>
+  <div><h2 class="label" id="visual-workspace-title">{published?'Published project':'Your project draft'}</h2><p class="hint">{published?'Your project is on the Work page.':dirty?'Unsaved changes. Choose Save Draft to keep your work privately.':'Draft saved privately. Reopen it from Your projects.'}</p></div>
+  {#if saveMessage}<p class="hint" role="status">{saveMessage}</p>{/if}
   {#if inlineMessage}<p class="hint" role="alert">{inlineMessage}</p>{/if}
   <div class="workspace-actions">
-   <button class="button outline" type="button" aria-pressed={editing} onclick={()=>{editing=!editing;}}>{editing?'Preview finished page':'Edit page'}</button>
+   {#if !published}<button class="button outline" type="button" aria-pressed={editing} onclick={()=>{editing=!editing;}}>{editing?'Preview finished page':'Edit page'}</button>{/if}
    <button class="button outline" type="button" aria-pressed={mode==='desktop'} onclick={()=>{mode='desktop';}}>Desktop</button>
    <button class="button outline" type="button" aria-pressed={mode==='mobile'} onclick={()=>{mode='mobile';}}>Mobile</button>
    {#if editing}<button class="button outline" type="button" onclick={()=>openPanel({kind:'add'})}>Add section</button><button class="button outline" type="button" onclick={()=>openPanel({kind:'project'})}>Project details</button>{/if}
    {#if removed}<button class="button outline" type="button" onclick={()=>{draft.layout.sections.splice(removed.index,0,removed.section);removed=null;}}>Undo remove</button>{/if}
+   {#if !published}
+    <form method="POST" action="?/saveLayout" use:enhance={prepareSave}><input type="hidden" name="intent" value="draft" /><button class="button" type="submit" disabled={saving}>{saving?'Saving…':'Save Draft'}</button></form>
+    <button class="button" type="button" disabled={saving} onclick={()=>{approval=false;saveMessage='';publishDialog.showModal();}}>Add to Portfolio</button>
+   {:else}<a class="button" href={`/work/${savedSlug}`}>View project</a>{/if}
    <button class="return-button" type="button" onclick={closeWorkspace}>Return to Studio</button>
   </div>
   {#if questions.length}<details class="questions"><summary>A few details to consider</summary><ul>{#each questions as question}<li>{question}</li>{/each}</ul></details>{/if}
@@ -172,6 +234,17 @@
  <div class="page-viewport">
   {#if draft}<iframe bind:this={frame} src="/studio/preview" title="Visual portfolio draft" style:width={mode==='mobile'?'390px':'1440px'} onload={sendDraft}></iframe>{/if}
  </div>
+</dialog>
+
+<dialog class="edit-panel" bind:this={publishDialog} aria-labelledby="publish-project-title">
+ <h2 class="label" id="publish-project-title">Add to Portfolio</h2>
+ <p>This makes the complete project visible on your Work page. Review the desktop and mobile previews before publishing.</p>
+ <form method="POST" action="?/saveLayout" use:enhance={prepareSave}>
+  <input type="hidden" name="intent" value="publish" />
+  <label class="category-choice"><input type="checkbox" bind:checked={approval} required /><span>I have reviewed this project and want to publish it.</span></label>
+  {#if saveMessage}<p class="hint" role="alert">{saveMessage}</p>{/if}
+  <div class="workspace-actions"><button class="button" type="submit" disabled={!approval || saving}>{saving?'Publishing…':'Confirm Add to Portfolio'}</button><button class="button outline" type="button" disabled={saving} onclick={()=>publishDialog.close()}>Keep editing</button></div>
+ </form>
 </dialog>
 
 <dialog class="edit-panel" bind:this={panel} aria-labelledby="visual-edit-title">
@@ -201,8 +274,19 @@
 <style>
  .visual-creator{display:flex;flex-direction:column;align-items:flex-start;row-gap:24px;width:100%;}
  .intro{margin-top:0;margin-bottom:0;text-align:left;}
+ .saved-projects{width:100%;margin-top:24px;padding-top:24px;border-top-width:var(--hairline);border-top-style:solid;border-top-color:var(--line);}
+ .saved-projects h3{margin-top:0;margin-bottom:20px;}
+ .saved-projects h4{margin-top:24px;margin-bottom:12px;}
+ .saved-project-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;column-gap:16px;row-gap:12px;padding-top:12px;padding-bottom:12px;}
+ .saved-project-row>span{min-width:0;overflow-wrap:anywhere;}
+ .saved-project-row .button{font-size:12px;}
  .brief-form{display:flex;flex-direction:column;align-items:stretch;row-gap:24px;width:100%;}
  .brief-field{display:flex;flex-direction:column;align-items:stretch;row-gap:8px;width:100%;min-width:0;}
+ .brief-categories{min-width:0;margin-top:0;margin-right:0;margin-bottom:0;margin-left:0;padding-top:0;padding-right:0;padding-bottom:0;padding-left:0;border-top-width:0;border-right-width:0;border-bottom-width:0;border-left-width:0;}
+ .brief-categories legend{padding-left:0;padding-right:0;margin-bottom:8px;}
+ .category-choices{display:flex;flex-wrap:wrap;column-gap:24px;row-gap:8px;margin-top:8px;}
+ .category-choice{display:flex;align-items:center;column-gap:10px;min-height:44px;cursor:pointer;}
+ .category-choice input{width:18px;height:18px;min-height:0;padding-top:0;padding-right:0;padding-bottom:0;padding-left:0;accent-color:var(--ink);flex-shrink:0;}
  input,textarea,select{width:100%;min-width:0;box-sizing:border-box;min-height:44px;padding-top:12px;padding-right:14px;padding-bottom:12px;padding-left:14px;border-top-width:var(--hairline);border-right-width:var(--hairline);border-bottom-width:var(--hairline);border-left-width:var(--hairline);border-top-style:solid;border-right-style:solid;border-bottom-style:solid;border-left-style:solid;border-top-color:var(--line);border-right-color:var(--line);border-bottom-color:var(--line);border-left-color:var(--line);border-top-left-radius:0;border-top-right-radius:0;border-bottom-left-radius:0;border-bottom-right-radius:0;background-color:#fff;color:var(--ink);font-family:var(--sans);font-size:inherit;line-height:1.35;}
  select{appearance:none;padding-right:42px;}
  .select-control{position:relative;display:block;width:100%;min-width:0;}

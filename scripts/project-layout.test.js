@@ -4,12 +4,17 @@ import {generateProjectLayout, layoutFailureMessage} from '../src/lib/server/ope
 import {validateLayoutResponse,layoutToDraft} from '../src/lib/studio/layout-response.js';
 import {validateSectionLayout} from '../src/lib/studio/project-sections.js';
 import {isPublicMediaPath} from '../src/lib/studio/media-paths.js';
+import {readProjectBrief} from '../src/lib/studio/project-brief.js';
 const section={type:'storyboard',heading:'Storyboard',description:'',text:'',layout:'storyboard',materials:['Add the storyboard if one was produced.']};
 const layout={intro:'An illustrated animation project.',format:'portrait',sections:[section,{...section,type:'video-showcase',heading:'Opening film',layout:'vertical-video'}],questions:['What animation tools did you use?']};
 
 test('layout request reuses endpoint/model, sends only text, requires JSON and makes exactly one request',async()=>{
  let calls=0;
- const brief={title:'Animation',category:'Motion Graphics',description:'I illustrated a short vertical film.'};
+ const input=new FormData();
+ input.set('title','Animation');input.set('description','I illustrated a short vertical film.');
+ input.append('category','Motion Graphics');input.append('category','Illustration');
+ const brief=readProjectBrief(input);
+ assert.deepEqual(brief.category,['Motion Graphics','Illustration']);
  const result=await generateProjectLayout(brief,{apiKey:'test-only-not-real',model:'configured-model',fetcher:async(url,options)=>{
   calls++;assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');const body=JSON.parse(options.body);
   assert.equal(body.model,'configured-model');assert.equal(body.response_format.type,'json_schema');assert.equal(body.provider.require_parameters,true);assert.equal(body.provider.data_collection,'deny');
@@ -21,6 +26,16 @@ test('layout request reuses endpoint/model, sends only text, requires JSON and m
  }});
  assert.equal(calls,1);assert.deepEqual(result,layout);
  const draft=layoutToDraft(result,brief.title);assert.equal(draft.project.title,brief.title);assert.equal(draft.project.client,'');assert.equal(draft.project.tools.length,0);assert.equal(draft.questions.length,1);assert.equal(draft.project.questions,undefined);assert.equal(draft.project.layout.sections[0].materials,undefined);
+});
+
+test('project brief requires approved categories and deduplicates repeated choices',()=>{
+ const input=new FormData();input.set('title','Project');input.set('description','An illustrated animation.');
+ assert.throws(()=>readProjectBrief(input),/at least one category/);
+ input.append('category','Illustration');input.append('category','Illustration');
+ assert.deepEqual(readProjectBrief(input).category,['Illustration']);
+ input.append('category','Unknown category');assert.throws(()=>readProjectBrief(input));
+ input.delete('category');input.append('category',new Blob(['Illustration']),'category.txt');
+ assert.throws(()=>readProjectBrief(input));
 });
 
 test('invalid/malicious schema, extra code and truncated output fail without invented fallback',async()=>{
