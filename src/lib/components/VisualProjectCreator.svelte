@@ -214,6 +214,8 @@
 
 <dialog class="visual-workspace" bind:this={workspace} aria-labelledby="visual-workspace-title">
  <div class="workspace-toolbar">
+  <!-- Keep closing easy to find without taking space in the editing actions. -->
+  <button class="close-workspace" type="button" aria-label="Close preview and return to Studio" title="Return to Studio" onclick={closeWorkspace}>×</button>
   <div><h2 class="label" id="visual-workspace-title">{published?'Published project':'Your project draft'}</h2><p class="hint">{published?'Your project is on the Work page.':dirty?'Unsaved changes. Choose Save Draft to keep your work privately.':'Draft saved privately. Reopen it from Your projects.'}</p></div>
   {#if saveMessage}<p class="hint" role="status">{saveMessage}</p>{/if}
   {#if inlineMessage}<p class="hint" role="alert">{inlineMessage}</p>{/if}
@@ -227,7 +229,6 @@
     <form method="POST" action="?/saveLayout" use:enhance={prepareSave}><input type="hidden" name="intent" value="draft" /><button class="button" type="submit" disabled={saving}>{saving?'Saving…':'Save Draft'}</button></form>
     <button class="button" type="button" disabled={saving} onclick={()=>{approval=false;saveMessage='';publishDialog.showModal();}}>Add to Portfolio</button>
    {:else}<a class="button" href={`/work/${savedSlug}`}>View project</a>{/if}
-   <button class="return-button" type="button" onclick={closeWorkspace}>Return to Studio</button>
   </div>
   {#if questions.length}<details class="questions"><summary>A few details to consider</summary><ul>{#each questions as question}<li>{question}</li>{/each}</ul></details>{/if}
  </div>
@@ -300,12 +301,12 @@
  .visual-workspace{width:calc(100vw - 24px);max-width:1700px;height:calc(100dvh - 24px);max-height:none;padding-top:0;padding-right:0;padding-bottom:0;padding-left:0;}
  .visual-workspace[open]{display:flex;flex-direction:column;}
  dialog::backdrop{background-color:rgb(28 28 28 / 30%);}
- .workspace-toolbar{padding-top:16px;padding-right:20px;padding-bottom:16px;padding-left:20px;border-bottom-width:var(--hairline);border-bottom-style:solid;border-bottom-color:var(--line);display:flex;flex-direction:column;row-gap:12px;}
+ .workspace-toolbar{position:relative;padding-top:16px;padding-right:64px;padding-bottom:16px;padding-left:20px;border-bottom-width:var(--hairline);border-bottom-style:solid;border-bottom-color:var(--line);display:flex;flex-direction:column;row-gap:12px;}
  .workspace-toolbar h2{margin-top:0;margin-bottom:6px;}
  .workspace-actions{display:flex;flex-wrap:wrap;column-gap:10px;row-gap:10px;align-items:center;}
  .workspace-actions button{font-size:12px;}
  [aria-pressed='true']{background-color:var(--lilac);}
- .return-button{background-color:transparent;color:var(--ink);border-top-width:0;border-right-width:0;border-bottom-width:0;border-left-width:0;text-decoration-line:underline;text-transform:none;font-weight:400;}
+ .close-workspace{position:absolute;top:8px;right:8px;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding-top:0;padding-right:0;padding-bottom:0;padding-left:0;background-color:transparent;color:var(--ink);border-top-width:0;border-right-width:0;border-bottom-width:0;border-left-width:0;font-size:32px;line-height:1;cursor:pointer;}
  .page-viewport{display:flex;justify-content:safe center;flex-grow:1;min-height:0;overflow-x:auto;overflow-y:hidden;background-color:#f8f8f8;}
  iframe{height:100%;flex-shrink:0;max-width:none;border-top-width:0;border-right-width:0;border-bottom-width:0;border-left-width:0;background-color:#fff;}
  .edit-panel{width:calc(100vw - 32px);max-width:560px;max-height:85dvh;padding-top:24px;padding-right:24px;padding-bottom:24px;padding-left:24px;overflow-y:auto;}
@@ -318,5 +319,5 @@
  .asset-choice img,.asset-choice video{width:100%;height:90px;object-fit:contain;}
  .asset-choice span{overflow-wrap:anywhere;}
  .add-choices{display:flex;flex-wrap:wrap;column-gap:12px;row-gap:12px;}
- @media(max-width:700px){.visual-workspace{width:100vw;height:100dvh;max-width:none;border-top-width:0;border-right-width:0;border-bottom-width:0;border-left-width:0;}.workspace-toolbar{padding-right:12px;padding-left:12px;}}
+ @media(max-width:700px){.visual-workspace{width:100vw;height:100dvh;max-width:none;border-top-width:0;border-right-width:0;border-bottom-width:0;border-left-width:0;}.workspace-toolbar{padding-right:60px;padding-left:12px;}}
 </style>
